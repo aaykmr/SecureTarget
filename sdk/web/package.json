@@ -1,0 +1,13 @@
+{
+  "name": "@securetarget/web-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "build:browser": "esbuild src/index.ts --bundle --format=iife --global-name=SecureTarget --platform=browser --target=es2020 --minify --outfile=../../web/public/sdk.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

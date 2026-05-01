@@ -1,0 +1,103 @@
+CREATE TABLE IF NOT EXISTS click_events (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL,
+  token_hash TEXT,
+  campaign_id TEXT,
+  adgroup_id TEXT,
+  creative_id TEXT,
+  channel TEXT,
+  landing_url TEXT,
+  referrer TEXT,
+  clicked_at TEXT NOT NULL,
+  metadata_json TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS login_tokens (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL,
+  token_hash TEXT NOT NULL,
+  token_salt TEXT NOT NULL,
+  issued_at TEXT NOT NULL,
+  expires_at TEXT,
+  first_seen_at TEXT NOT NULL,
+  last_seen_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS attribution_events (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL,
+  token_hash TEXT NOT NULL,
+  click_event_id TEXT NOT NULL,
+  conversion_event_id TEXT NOT NULL,
+  attributed_at TEXT NOT NULL,
+  attribution_window_hours INTEGER NOT NULL,
+  confidence REAL NOT NULL DEFAULT 1.0,
+  FOREIGN KEY(click_event_id) REFERENCES click_events(id)
+);
+
+CREATE TABLE IF NOT EXISTS sdk_events (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  token_hash TEXT,
+  payload_json TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS processed_events (
+  event_id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  processed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_login_tokens_company_hash ON login_tokens(company_id, token_hash);
+CREATE INDEX IF NOT EXISTS idx_click_events_company_clicked ON click_events(company_id, clicked_at DESC);
+CREATE INDEX IF NOT EXISTS idx_click_events_company_token ON click_events(company_id, token_hash, clicked_at DESC);
+CREATE INDEX IF NOT EXISTS idx_attribution_company_hash ON attribution_events(company_id, token_hash);
+
+-- Dashboard users, projects (company_id), API keys (hashed)
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS projects (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  company_id TEXT NOT NULL UNIQUE,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS api_keys (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  key_prefix TEXT NOT NULL,
+  key_hash TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  revoked_at TEXT,
+  FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
+CREATE INDEX IF NOT EXISTS idx_api_keys_project ON api_keys(project_id);
+CREATE INDEX IF NOT EXISTS idx_projects_user ON projects(user_id);
+
+-- Client session: device captured once at bootstrap; later requests use x-session-id only
+CREATE TABLE IF NOT EXISTS client_sessions (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL,
+  device_platform TEXT NOT NULL,
+  device_details_json TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_seen_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  revoked_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_client_sessions_company ON client_sessions(company_id);
+CREATE INDEX IF NOT EXISTS idx_client_sessions_last_seen ON client_sessions(company_id, last_seen_at DESC);
