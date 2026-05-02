@@ -1,17 +1,21 @@
 "use server";
 
+import { hashToken, tokenSaltForCompany } from "@securetarget/shared";
 import { hashSync } from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { getDb } from "@/lib/db";
 import {
+  countSdkEventsForCompany,
   createApiKeyForProject,
   createProject,
   createUser,
   findUserByEmail,
   getProjectForUser,
+  listSdkEventsForCompany,
   revokeApiKey
 } from "@/lib/repos";
+import type { SdkEventRow } from "@/lib/repos";
 
 export type ActionResult = { ok: true; message?: string; apiKey?: string } | { ok: false; error: string };
 
@@ -84,4 +88,44 @@ export async function revokeApiKeyAction(formData: FormData): Promise<void> {
     return;
   }
   revalidatePath(`/dashboard/${projectId}`);
+}
+
+const SDK_EVENTS_PAGE_SIZE = 50;
+
+export type FetchSdkEventsResult =
+  | { ok: true; rows: SdkEventRow[]; total: number; page: number; pageSize: number }
+  | { ok: false; error: string };
+
+/** Load `sdk_events` for a project. Optional `token` is the same opaque value sent in ingest; it is hashed server-side and never logged. */
+export async function fetchSdkEventsAction(
+  projectId: string,
+  options: { page: number; token?: string }
+): Promise<FetchSdkEventsResult> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false, error: "Unauthorized." };
+  }
+  const db = getDb();
+  const project = getProjectForUser(db, projectId, session.user.id);
+  if (!project) {
+    return { ok: false, error: "Project not found." };
+  }
+
+  const page = Math.max(1, options.page);
+  const offset = (page - 1) * SDK_EVENTS_PAGE_SIZE;
+  const raw = options.token?.trim();
+  let tokenHash: string | undefined;
+  if (raw) {
+    const salt = tokenSaltForCompany(project.company_id);
+    tokenHash = hashToken(raw, salt);
+  }
+
+  const total = countSdkEventsForCompany(db, project.company_id, tokenHash);
+  const rows = listSdkEventsForCompany(db, project.company_id, {
+    tokenHash,
+    limit: SDK_EVENTS_PAGE_SIZE,
+    offset
+  });
+
+  return { ok: true, rows, total, page, pageSize: SDK_EVENTS_PAGE_SIZE };
 }

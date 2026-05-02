@@ -58,6 +58,10 @@ export class SecureTargetClient {
     this.initialDevice = config.initialDevice;
   }
 
+  /**
+   * Only used when `skipSession` is true. When sessions are enabled, the record `token` is always the
+   * bootstrap `sessionId` (your per-install identifier for correlation).
+   */
   setLoginToken(token: string): void {
     this.token = token;
   }
@@ -133,36 +137,49 @@ export class SecureTargetClient {
     }
   }
 
+  /** Opaque id sent as `token` on every `/v1/record` body: bootstrap `sessionId`, or `setLoginToken` when `skipSession`. */
+  private recordToken(): string | null {
+    if (this.sessionId) return this.sessionId;
+    if (this.skipSession) return this.token;
+    return null;
+  }
+
   async trackClick(clickData: Omit<ClickEvent, "actionType" | "companyId">): Promise<Response> {
     await this.ensureSession();
+    const t = this.recordToken() ?? clickData.token;
     return this.send({
       ...clickData,
       actionType: "click",
       companyId: this.companyId,
-      token: this.token ?? clickData.token
+      ...(t ? { token: t } : {})
     } satisfies ClickEvent);
   }
 
-  async trackLogin(loginData: Omit<LoginEvent, "actionType" | "companyId">): Promise<Response> {
+  async trackLogin(loginData: Omit<LoginEvent, "actionType" | "companyId" | "token">): Promise<Response> {
     await this.ensureSession();
-    this.token = loginData.token;
+    const t = this.recordToken();
+    if (!t) {
+      throw new Error("Session or token required. Complete bootstrap or set skipSession + setLoginToken.");
+    }
     return this.send({
       ...loginData,
       actionType: "login",
-      companyId: this.companyId
+      companyId: this.companyId,
+      token: t
     } satisfies LoginEvent);
   }
 
   async trackConversion(conversionData: Omit<ConversionEvent, "actionType" | "companyId" | "token">): Promise<Response> {
     await this.ensureSession();
-    if (!this.token) {
-      throw new Error("Login token missing. Call setLoginToken() or trackLogin() first.");
+    const t = this.recordToken();
+    if (!t) {
+      throw new Error("Session or token required. Complete bootstrap or set skipSession + setLoginToken.");
     }
     return this.send({
       ...conversionData,
       actionType: "conversion",
       companyId: this.companyId,
-      token: this.token
+      token: t
     } satisfies ConversionEvent);
   }
 

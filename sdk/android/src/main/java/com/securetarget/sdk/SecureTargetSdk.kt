@@ -42,12 +42,11 @@ class SecureTargetSdk(
         context.applicationContext.getSharedPreferences("securetarget_sdk", Context.MODE_PRIVATE)
     private val mainHandler = Handler(Looper.getMainLooper())
     private val ioExecutor = Executors.newSingleThreadExecutor()
-    private var loginToken: String? = null
     @Volatile
     private var sessionId: String? = prefs.getString(KEY_SESSION, null)
 
-    fun setLoginToken(token: String) {
-        loginToken = token
+    @Deprecated("Record token is the bootstrap sessionId; this has no effect.")
+    fun setLoginToken(@Suppress("UNUSED_PARAMETER") token: String) {
     }
 
     fun clearSession() {
@@ -124,13 +123,14 @@ class SecureTargetSdk(
         ioExecutor.execute {
             try {
                 ensureBlocking()
+                val sid = sessionId ?: throw IllegalStateException("Session missing")
                 val o = JSONObject().apply {
                     put("actionType", "click")
                     put("eventId", eventId)
                     put("companyId", config.companyId)
                     put("occurredAt", occurredAt)
+                    put("token", sid)
                     campaignId?.let { put("campaignId", it) }
-                    loginToken?.let { put("token", it) }
                 }
                 postJson("/v1/record", o)
                 mainHandler.post { callback(null) }
@@ -140,17 +140,17 @@ class SecureTargetSdk(
         }
     }
 
-    fun trackLogin(eventId: String, occurredAt: String, token: String, callback: (Exception?) -> Unit) {
-        loginToken = token
+    fun trackLogin(eventId: String, occurredAt: String, callback: (Exception?) -> Unit) {
         ioExecutor.execute {
             try {
                 ensureBlocking()
+                val sid = sessionId ?: throw IllegalStateException("Session missing")
                 val o = JSONObject().apply {
                     put("actionType", "login")
                     put("eventId", eventId)
                     put("companyId", config.companyId)
                     put("occurredAt", occurredAt)
-                    put("token", token)
+                    put("token", sid)
                 }
                 postJson("/v1/record", o)
                 mainHandler.post { callback(null) }
@@ -167,19 +167,16 @@ class SecureTargetSdk(
         value: Double? = null,
         callback: (Exception?) -> Unit
     ) {
-        val t = loginToken ?: run {
-            callback(IllegalStateException("login token missing"))
-            return
-        }
         ioExecutor.execute {
             try {
                 ensureBlocking()
+                val sid = sessionId ?: throw IllegalStateException("Session missing")
                 val o = JSONObject().apply {
                     put("actionType", "conversion")
                     put("eventId", eventId)
                     put("companyId", config.companyId)
                     put("occurredAt", occurredAt)
-                    put("token", t)
+                    put("token", sid)
                     put("conversionName", conversionName)
                     value?.let { put("value", it) }
                 }

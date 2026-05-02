@@ -10,7 +10,7 @@ Ingest requests must send the API key in the **`x-api-key`** header. The backend
 
 ## What this SDK does
 - Tracks click, login, and conversion events for attribution.
-- Uses app-provided opaque login token.
+- Uses the bootstrap **`sessionId`** as the opaque **`token`** on every **`/v1/record`** body (same value as **`x-session-id`**), so you can correlate users in the dashboard by that id without sending a separate app JWT.
 - Does not collect device IDs, ad IDs, emails, or account PII.
 - Persists only hashed token server-side.
 
@@ -28,7 +28,7 @@ Set **`INGEST_REQUIRE_SESSION=1`** on the ingest service if you want to **reject
 1. Collect device metadata once **if your SDK or policy sends it** (platform is required in JSON; optional fields are not stored server-side).
 2. `POST /v1/session/bootstrap` with `x-api-key` and JSON body `occurredAt` + `device`.
 3. Store `sessionId` (web: `sessionStorage` by default; iOS: `UserDefaults`; Android: `SharedPreferences`).
-4. On every `track*` call, send **`x-session-id`** only—no device object in the **`/v1/record`** body. Keep IP/device/user identity in **your** backend if you need correlation.
+4. On every `track*` call, send **`x-session-id`** and use the same **`sessionId`** as JSON **`token`** on record payloads—no device object in the **`/v1/record`** body. Keep extra identity in **your** backend if needed.
 
 ## Web SDK quickstart
 
@@ -72,7 +72,10 @@ await sdk.trackClick({
   campaignId: "spring-launch"
 });
 
-sdk.setLoginToken("opaque-session-token");
+await sdk.trackLogin({
+  eventId: crypto.randomUUID(),
+  occurredAt: new Date().toISOString()
+});
 
 await sdk.trackConversion({
   eventId: crypto.randomUUID(),
@@ -86,14 +89,14 @@ await sdk.trackConversion({
 Prefer injecting the API key via **environment variables** or server-side config rather than hard-coding in public HTML.
 
 ## iOS (Swift)
-- `SecureTargetSdk` bootstraps on first use, persists `sessionId`, and adds `x-session-id` to ingest requests.
-- Optional: call `ensureSession(device:)` early (e.g. after launch) with your own `SecureTargetDeviceDetails`; otherwise defaults are used.
-- API: `setLoginToken`, `trackClick`, `trackLogin`, `trackConversion`, `clearSession`.
+- Bootstraps on first use, persists `sessionId`, sends **`x-session-id`** and uses the same id as **`token`** on `/v1/record`.
+- Optional: call `bootstrapSession(device:)` early with your own `SecureTargetDeviceDetails`.
+- API: `trackClick`, `trackLogin(eventId, occurredAt)`, `trackConversion`, `clearSession`. `setLoginToken` is deprecated (no-op).
 
 ## Android (Kotlin)
-- `SecureTargetSdk(context, config)` stores the session id in SharedPreferences and sends `x-session-id` on track calls.
-- Optional: `ensureSession(device)` before tracking to control device fields at bootstrap; otherwise `SecureTargetSdk.defaultDevice()` is used.
-- API: `setLoginToken`, `ensureSession`, `trackClick`, `trackLogin`, `trackConversion`, `clearSession`.
+- Stores `sessionId` in SharedPreferences; sends **`x-session-id`** and **`token`** = session id on record calls.
+- Optional: `ensureSession(device)` before tracking for bootstrap details.
+- API: `ensureSession`, `trackClick`, `trackLogin(eventId, occurredAt, callback)`, `trackConversion`, `clearSession`. `setLoginToken` is deprecated (no-op).
 
 ## Event payload contract
 - Shared types and runtime guards are in `packages/contracts/src/events.ts`.
@@ -101,6 +104,7 @@ Prefer injecting the API key via **environment variables** or server-side config
   - `eventId`
   - `companyId` (must still be present in JSON; ingest overwrites with the value tied to your API key)
   - `occurredAt` (ISO timestamp)
+- **`token`:** use the bootstrap **`sessionId`** (same string as **`x-session-id`**) for click (when using sessions), login, and conversion. The backend hashes it for storage and dashboard filters.
 
 ## Privacy defaults
 - No device fingerprinting.

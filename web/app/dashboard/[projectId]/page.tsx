@@ -29,6 +29,14 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
         </Link>
         <h1 className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">{project.name}</h1>
         <p className="mt-1 font-mono text-xs text-zinc-600 dark:text-zinc-400">companyId: {project.company_id}</p>
+        <p className="mt-3">
+          <Link
+            href={`/dashboard/${project.id}/events`}
+            className="text-sm font-medium text-zinc-800 underline-offset-2 hover:underline dark:text-zinc-200"
+          >
+            View ingest events →
+          </Link>
+        </p>
       </div>
 
       <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">

@@ -36,7 +36,7 @@ When generating API keys, the dashboard hashes using **`web/lib/apiKeyPepper.ts`
 npm run dev --workspace web
 ```
 
-Open `http://localhost:3000`. Register, create a project, then **generate an API key** and copy the **`companyId`** from the project page.
+Open `http://localhost:3000`. Register, create a project, then **generate an API key** and copy the **`companyId`** from the project page. Use the sidebar **Events** link (per project) to query `sdk_events` and filter by opaque token.
 
 Set `NEXT_PUBLIC_INGEST_URL` in `.env` to the public base URL of your ingest server (used in dashboard snippets).
 

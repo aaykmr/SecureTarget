@@ -57,6 +57,9 @@ CREATE INDEX IF NOT EXISTS idx_click_events_company_clicked ON click_events(comp
 CREATE INDEX IF NOT EXISTS idx_click_events_company_token ON click_events(company_id, token_hash, clicked_at DESC);
 CREATE INDEX IF NOT EXISTS idx_attribution_company_hash ON attribution_events(company_id, token_hash);
 
+CREATE INDEX IF NOT EXISTS idx_sdk_events_company_created ON sdk_events(company_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sdk_events_company_token ON sdk_events(company_id, token_hash);
+
 -- Dashboard users, projects (company_id), API keys (hashed)
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,

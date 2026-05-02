@@ -1,16 +1,11 @@
 import crypto from "node:crypto";
+import { hashToken, tokenSaltForCompany } from "@securetarget/shared";
 import type { Database } from "better-sqlite3";
 import type { ClickEvent, ConversionEvent, LoginEvent } from "../../../packages/contracts/src/events.js";
 
 const DEFAULT_WINDOW_HOURS = 24 * 7;
 
-export function hashToken(token: string, salt: string): string {
-  return crypto.createHash("sha256").update(`${salt}:${token}`).digest("hex");
-}
-
-function tokenSaltForCompany(companyId: string, secret = "securetarget-v1"): string {
-  return crypto.createHash("sha256").update(`${secret}:${companyId}`).digest("hex");
-}
+export { hashToken, tokenSaltForCompany } from "@securetarget/shared";
 
 export function storeClick(db: Database, event: ClickEvent): void {
   const salt = tokenSaltForCompany(event.companyId);

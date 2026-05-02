@@ -66,7 +66,6 @@ private struct BootstrapResponse: Decodable {
 
 public enum SecureTargetError: Error {
     case missingSession
-    case missingLoginToken
     case http(Int, String)
     case decode
 }
@@ -74,7 +73,6 @@ public enum SecureTargetError: Error {
 public final class SecureTargetSDK {
     private let config: SecureTargetConfig
     private let storageKey = "securetarget_session_id"
-    private var loginToken: String?
     private var sessionId: String?
     private let urlSession: URLSession
 
@@ -86,9 +84,9 @@ public final class SecureTargetSDK {
         }
     }
 
-    public func setLoginToken(_ token: String) {
-        self.loginToken = token
-    }
+    /// Deprecated: ingest `token` is always the bootstrap `sessionId` on every `/v1/record` call.
+    @available(*, deprecated, message: "Record token is the bootstrap sessionId; this method has no effect.")
+    public func setLoginToken(_ token: String) {}
 
     /// Removes stored session so the next call bootstraps again.
     public func clearSession() {
@@ -116,6 +114,12 @@ public final class SecureTargetSDK {
         UserDefaults.standard.set(decoded.sessionId, forKey: storageKey)
     }
 
+    private func requireSessionId() async throws -> String {
+        try await bootstrapSession()
+        guard let sid = sessionId else { throw SecureTargetError.missingSession }
+        return sid
+    }
+
     private func jsonHeaders() -> [String: String] {
         var h = ["Content-Type": "application/json", "x-api-key": config.apiKey]
         if let sid = sessionId {
@@ -139,39 +143,39 @@ public final class SecureTargetSDK {
     }
 
     public func trackClick(eventId: String, occurredAt: String, campaignId: String? = nil) async throws {
+        let sid = try await requireSessionId()
         var body: [String: Any] = [
             "actionType": "click",
             "eventId": eventId,
             "companyId": config.companyId,
-            "occurredAt": occurredAt
+            "occurredAt": occurredAt,
+            "token": sid
         ]
         if let c = campaignId { body["campaignId"] = c }
-        if let t = loginToken { body["token"] = t }
         try await post(path: "/v1/record", body: body)
     }
 
-    public func trackLogin(eventId: String, occurredAt: String, token: String) async throws {
-        loginToken = token
+    /// `token` on the wire is the bootstrap **sessionId** (same identifier as `x-session-id`).
+    public func trackLogin(eventId: String, occurredAt: String) async throws {
+        let sid = try await requireSessionId()
         let body: [String: Any] = [
             "actionType": "login",
             "eventId": eventId,
             "companyId": config.companyId,
             "occurredAt": occurredAt,
-            "token": token
+            "token": sid
         ]
         try await post(path: "/v1/record", body: body)
     }
 
     public func trackConversion(eventId: String, occurredAt: String, conversionName: String, value: Double? = nil) async throws {
-        guard let token = loginToken else {
-            throw SecureTargetError.missingLoginToken
-        }
+        let sid = try await requireSessionId()
         var body: [String: Any] = [
             "actionType": "conversion",
             "eventId": eventId,
             "companyId": config.companyId,
             "occurredAt": occurredAt,
-            "token": token,
+            "token": sid,
             "conversionName": conversionName
         ]
         if let v = value { body["value"] = v }

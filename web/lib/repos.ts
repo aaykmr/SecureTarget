@@ -96,3 +96,49 @@ export function revokeApiKey(db: Database, keyId: string, projectId: string, use
     .run(keyId, projectId);
   return res.changes > 0;
 }
+
+export interface SdkEventRow {
+  id: string;
+  company_id: string;
+  event_type: string;
+  token_hash: string | null;
+  payload_json: string;
+  created_at: string;
+}
+
+export function countSdkEventsForCompany(db: Database, companyId: string, tokenHash?: string | null): number {
+  const row = tokenHash
+    ? (db.prepare(`SELECT COUNT(*) AS c FROM sdk_events WHERE company_id = ? AND token_hash = ?`).get(companyId, tokenHash) as {
+        c: number;
+      })
+    : (db.prepare(`SELECT COUNT(*) AS c FROM sdk_events WHERE company_id = ?`).get(companyId) as { c: number });
+  return Number(row.c);
+}
+
+export function listSdkEventsForCompany(
+  db: Database,
+  companyId: string,
+  opts: { tokenHash?: string | null; limit: number; offset: number }
+): SdkEventRow[] {
+  const { tokenHash, limit, offset } = opts;
+  if (tokenHash) {
+    return db
+      .prepare(
+        `SELECT id, company_id, event_type, token_hash, payload_json, created_at
+         FROM sdk_events
+         WHERE company_id = ? AND token_hash = ?
+         ORDER BY created_at DESC
+         LIMIT ? OFFSET ?`
+      )
+      .all(companyId, tokenHash, limit, offset) as SdkEventRow[];
+  }
+  return db
+    .prepare(
+      `SELECT id, company_id, event_type, token_hash, payload_json, created_at
+       FROM sdk_events
+       WHERE company_id = ?
+       ORDER BY created_at DESC
+       LIMIT ? OFFSET ?`
+    )
+    .all(companyId, limit, offset) as SdkEventRow[];
+}

@@ -72,7 +72,7 @@ Send one JSON object per event.
 - **`actionType`:** `click` \| `login` \| `conversion`
 - **`eventId`**, **`companyId`**, **`occurredAt`**
 
-Other fields depend on the action (e.g. **`token`** for login/conversion, **`conversionName`** for conversion). Exact validation rules live in the published contract your SDK tracks (see repo **`packages/contracts/src/events.ts`** or your vendor’s copy).
+Other fields depend on the action (e.g. **`token`**, **`conversionName`**). Official SDKs set **`token`** to the same value as **`sessionId`** from bootstrap (the install/session identifier). Exact validation rules are in **`packages/contracts/src/events.ts`**.
 
 **Example (`login`):**
 
@@ -80,15 +80,17 @@ Other fields depend on the action (e.g. **`token`** for login/conversion, **`con
 curl -sS -X POST "$ENDPOINT/v1/record" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -H "x-session-id: sess_your_session_if_any" \
+  -H "x-session-id: sess_abc..." \
   -d '{
     "actionType": "login",
     "eventId": "evt-login-1",
     "companyId": "your-company-id",
     "occurredAt": "2026-05-01T12:00:00.000Z",
-    "token": "opaque-session-token"
+    "token": "sess_abc..."
   }'
 ```
+
+Use the **same** string for **`x-session-id`** and **`token`** (your bootstrap `sessionId`).
 
 ---
 

@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Database } from "better-sqlite3";
 import { validateIngestEvent } from "../../../packages/contracts/src/events.js";
+import { hashToken, tokenSaltForCompany } from "@securetarget/shared";
 import {
   isEventProcessed,
   markEventProcessed,
@@ -101,7 +102,9 @@ export async function handleIngest(req: IncomingMessage, res: ServerResponse, db
 
     if (payload.actionType === "click") {
       storeClick(db, payload);
-      storeSdkEvent(db, payload.companyId, payload.actionType, payload);
+      const salt = tokenSaltForCompany(payload.companyId);
+      const tokenHash = payload.token ? hashToken(payload.token, salt) : undefined;
+      storeSdkEvent(db, payload.companyId, payload.actionType, payload, tokenHash);
       markEventProcessed(db, payload.eventId, payload.companyId, payload.actionType);
       touchIngestSession(db, companyIdFromKey, req);
       sendJson(res, 202, { ok: true });
@@ -119,7 +122,9 @@ export async function handleIngest(req: IncomingMessage, res: ServerResponse, db
 
     if (payload.actionType === "conversion") {
       const result = resolveAndStoreAttribution(db, payload);
-      storeSdkEvent(db, payload.companyId, payload.actionType, { ...payload, token: "[redacted]" });
+      const salt = tokenSaltForCompany(payload.companyId);
+      const tokenHash = hashToken(payload.token, salt);
+      storeSdkEvent(db, payload.companyId, payload.actionType, { ...payload, token: "[redacted]" }, tokenHash);
       markEventProcessed(db, payload.eventId, payload.companyId, payload.actionType);
       touchIngestSession(db, companyIdFromKey, req);
       sendJson(res, 202, { ok: true, attribution: result });
