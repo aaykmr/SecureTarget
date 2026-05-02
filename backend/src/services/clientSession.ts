@@ -1,14 +1,14 @@
 import crypto from "node:crypto";
 import type { Database } from "better-sqlite3";
 
-export function createClientSession(db: Database, companyId: string, deviceJson: Record<string, unknown>): string {
-  const platform = typeof deviceJson.platform === "string" ? deviceJson.platform : "unknown";
+/** Persists only opaque session id + company + timestamps (no device payload). */
+export function createClientSession(db: Database, companyId: string): string {
   const id = `sess_${crypto.randomUUID()}`;
   const now = new Date().toISOString();
   db.prepare(
-    `INSERT INTO client_sessions (id, company_id, device_platform, device_details_json, created_at, last_seen_at)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  ).run(id, companyId, platform, JSON.stringify(deviceJson), now, now);
+    `INSERT INTO client_sessions (id, company_id, created_at, last_seen_at)
+     VALUES (?, ?, ?, ?)`
+  ).run(id, companyId, now, now);
   return id;
 }
 

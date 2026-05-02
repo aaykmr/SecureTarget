@@ -1,4 +1,4 @@
-/** Sent once on POST /v1/session/bootstrap; never repeat on later ingest calls. */
+/** Sent on POST /v1/session/bootstrap (validated by ingest; not persisted—only opaque session id is stored server-side). Never repeat on later ingest calls. */
 export type DevicePlatform = "web" | "ios" | "android";
 
 export interface DeviceDetails {

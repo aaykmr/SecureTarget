@@ -53,11 +53,12 @@ export async function handleSessionBootstrap(req: IncomingMessage, res: ServerRe
     const raw = await readJson(req);
     if (!isDevicePayload(raw)) {
       sendJson(res, 400, {
-        error: "Invalid body: require occurredAt (ISO), device.platform (web|ios|android), and optional device fields"
+        error:
+          "Invalid body: require occurredAt (ISO), device.platform (web|ios|android). Device fields are validated but not stored server-side."
       });
       return;
     }
-    const sessionId = createClientSession(db, companyId, raw.device as Record<string, unknown>);
+    const sessionId = createClientSession(db, companyId);
     sendJson(res, 201, { sessionId });
   } catch (e) {
     sendJson(res, 400, { error: e instanceof Error ? e.message : "Invalid JSON" });

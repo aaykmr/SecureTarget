@@ -15,7 +15,7 @@ Ingest requests must send the API key in the **`x-api-key`** header. The backend
 - Persists only hashed token server-side.
 
 ## Backend endpoints
-- `POST /v1/session/bootstrap` — **once per browser/app install** (or after `clearSession`). Sends `{ occurredAt, device }` where `device.platform` is `web`, `ios`, or `android`. Response: `{ sessionId }` (opaque id).
+- `POST /v1/session/bootstrap` — **once per browser/app install** (or after `clearSession`). Body `{ occurredAt, device }` must include `device.platform` (`web` | `ios` | `android`); ingest **validates** this shape but **does not persist** device JSON—only an opaque **`sessionId`** and timestamps are stored server-side.
 - `POST /v1/record` — all attribution events (click, login, conversion). JSON body must include **`actionType`**: `click`, `login`, or `conversion`, plus the fields for that action (see contract below).
 
 All requests require the **`x-api-key`** header (dashboard-issued key).
@@ -25,10 +25,10 @@ After bootstrap, send **`x-session-id`** with the returned `sessionId` on **`/v1
 Set **`INGEST_REQUIRE_SESSION=1`** on the ingest service if you want to **reject** ingest events that omit a valid `x-session-id` (stronger enforcement).
 
 ## Session flow (all platforms)
-1. Collect device metadata once (platform, OS, locale, screen where applicable).
+1. Collect device metadata once **if your SDK or policy sends it** (platform is required in JSON; optional fields are not stored server-side).
 2. `POST /v1/session/bootstrap` with `x-api-key` and JSON body `occurredAt` + `device`.
 3. Store `sessionId` (web: `sessionStorage` by default; iOS: `UserDefaults`; Android: `SharedPreferences`).
-4. On every `track*` call, send **`x-session-id`** only—no device object in the ingest body.
+4. On every `track*` call, send **`x-session-id`** only—no device object in the **`/v1/record`** body. Keep IP/device/user identity in **your** backend if you need correlation.
 
 ## Web SDK quickstart
 

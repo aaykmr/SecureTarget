@@ -103,5 +103,5 @@ curl -X POST http://localhost:8080/v1/record \
 ```
 
 ## SDK integration docs
-- **`docs/CLIENT.md`** — setup for operators and integrators (also structured for LLM-assisted workflows).
+- **`docs/CLIENT.md`** — **app integrator** guide (API keys, `endpoint`, bootstrap, `/v1/record`, SDKs, client-side troubleshooting).
 - **`docs/sdk-integration.md`** — Web/iOS/Android integration flow and payload contract details.

@@ -88,12 +88,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
 CREATE INDEX IF NOT EXISTS idx_api_keys_project ON api_keys(project_id);
 CREATE INDEX IF NOT EXISTS idx_projects_user ON projects(user_id);
 
--- Client session: device captured once at bootstrap; later requests use x-session-id only
+-- Client session: opaque id only (no device/IP persisted). Later requests use x-session-id only.
 CREATE TABLE IF NOT EXISTS client_sessions (
   id TEXT PRIMARY KEY,
   company_id TEXT NOT NULL,
-  device_platform TEXT NOT NULL,
-  device_details_json TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   last_seen_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   revoked_at TEXT
