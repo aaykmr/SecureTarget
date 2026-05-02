@@ -1,2 +1,2 @@
 export * from "./apiKey";
-export * from "./tokenHash";
+export { hashToken, tokenSaltForCompany } from "./tokenHash";

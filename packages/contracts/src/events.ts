@@ -1,7 +1,7 @@
 export type ISODateString = string;
 
 /** Discriminator for `POST /v1/record` payloads */
-export type IngestActionType = "click" | "login" | "conversion";
+export type IngestActionType = "record" | "login" | "conversion" | "custom";
 
 export interface BaseEvent {
   eventId: string;
@@ -9,8 +9,9 @@ export interface BaseEvent {
   occurredAt: ISODateString;
 }
 
-export interface ClickEvent extends BaseEvent {
-  actionType: "click";
+/** First touch / campaign record (stored in `click_events` + `sdk_events`). */
+export interface RecordEvent extends BaseEvent {
+  actionType: "record";
   token?: string;
   campaignId?: string;
   adgroupId?: string;
@@ -36,7 +37,13 @@ export interface ConversionEvent extends BaseEvent {
   metadata?: Record<string, unknown>;
 }
 
-export type IngestEvent = ClickEvent | LoginEvent | ConversionEvent;
+/** Arbitrary product/analytics events (views, screens, etc.). Stored only in `sdk_events`, not in `click_events`. */
+export interface CustomEvent extends BaseEvent {
+  actionType: "custom";
+  token?: string;
+}
+
+export type IngestEvent = RecordEvent | LoginEvent | ConversionEvent | CustomEvent;
 
 function isIsoDate(value: unknown): value is ISODateString {
   return typeof value === "string" && !Number.isNaN(Date.parse(value));
@@ -54,8 +61,8 @@ function hasBaseFields(payload: Record<string, unknown>): boolean {
   );
 }
 
-export function isClickEvent(payload: unknown): payload is ClickEvent {
-  if (!isObject(payload) || payload.actionType !== "click" || !hasBaseFields(payload)) {
+export function isRecordEvent(payload: unknown): payload is RecordEvent {
+  if (!isObject(payload) || payload.actionType !== "record" || !hasBaseFields(payload)) {
     return false;
   }
   if (payload.metadata !== undefined && !isObject(payload.metadata)) {
@@ -96,9 +103,19 @@ export function isConversionEvent(payload: unknown): payload is ConversionEvent 
   return true;
 }
 
+export function isCustomEvent(payload: unknown): payload is CustomEvent {
+  if (!isObject(payload) || payload.actionType !== "custom" || !hasBaseFields(payload)) {
+    return false;
+  }
+  if (payload.token !== undefined && (typeof payload.token !== "string" || payload.token.length === 0)) {
+    return false;
+  }
+  return true;
+}
+
 export function validateIngestEvent(payload: unknown): IngestEvent {
-  if (isClickEvent(payload) || isLoginEvent(payload) || isConversionEvent(payload)) {
+  if (isRecordEvent(payload) || isLoginEvent(payload) || isConversionEvent(payload) || isCustomEvent(payload)) {
     return payload;
   }
-  throw new Error("Invalid ingest event payload (expected actionType click | login | conversion)");
+  throw new Error("Invalid ingest event payload (expected actionType record | login | conversion | custom)");
 }

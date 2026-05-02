@@ -1,4 +1,4 @@
-import type { ClickEvent, ConversionEvent, LoginEvent } from "../../../packages/contracts/src/events.js";
+import type { ConversionEvent, CustomEvent, LoginEvent, RecordEvent } from "../../../packages/contracts/src/events.js";
 import type { DeviceDetails } from "../../../packages/contracts/src/device.js";
 
 type FetchLike = typeof fetch;
@@ -144,15 +144,15 @@ export class SecureTargetClient {
     return null;
   }
 
-  async trackClick(clickData: Omit<ClickEvent, "actionType" | "companyId">): Promise<Response> {
+  async trackRecord(recordData: Omit<RecordEvent, "actionType" | "companyId">): Promise<Response> {
     await this.ensureSession();
-    const t = this.recordToken() ?? clickData.token;
+    const t = this.recordToken() ?? recordData.token;
     return this.send({
-      ...clickData,
-      actionType: "click",
+      ...recordData,
+      actionType: "record",
       companyId: this.companyId,
       ...(t ? { token: t } : {})
-    } satisfies ClickEvent);
+    } satisfies RecordEvent);
   }
 
   async trackLogin(loginData: Omit<LoginEvent, "actionType" | "companyId" | "token">): Promise<Response> {
@@ -181,6 +181,20 @@ export class SecureTargetClient {
       companyId: this.companyId,
       token: t
     } satisfies ConversionEvent);
+  }
+
+  /** Product/analytics events (views, screens, etc.). Does not write attribution `click_events`; only `sdk_events`. */
+  async trackCustom(
+    customData: Omit<CustomEvent, "actionType" | "companyId"> & Record<string, unknown>
+  ): Promise<Response> {
+    await this.ensureSession();
+    const t = this.recordToken() ?? (typeof customData.token === "string" ? customData.token : undefined);
+    return this.send({
+      ...customData,
+      actionType: "custom",
+      companyId: this.companyId,
+      ...(t ? { token: t } : {})
+    });
   }
 
   private async send(payload: unknown): Promise<Response> {

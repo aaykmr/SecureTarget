@@ -1,0 +1,81 @@
+@use "../../styles/mixins" as m;
+
+.root {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  font-weight: 400;
+  @include m.body-text;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.primary {
+  @include m.pill-radius;
+  background: var(--color-accent-cta);
+  padding: var(--space-6) var(--space-6);
+  color: var(--palette-white);
+
+  &:hover:not(:disabled) {
+    background: var(--color-accent-cta-hover);
+    color: var(--color-hover-fg);
+  }
+}
+
+.secondary {
+  @include m.pill-radius;
+  border: 1px solid transparent;
+  background: var(--color-canvas);
+  padding: var(--space-6) var(--space-6);
+  color: var(--color-fg-muted);
+
+  &:hover:not(:disabled) {
+    background: var(--color-accent-interactive);
+    color: var(--color-hover-fg);
+  }
+}
+
+.outlined {
+  @include m.pill-radius;
+  border: 1px solid var(--color-fg-default);
+  background: var(--color-surface);
+  padding: var(--space-6) var(--space-6);
+  color: var(--color-fg-default);
+
+  &:hover:not(:disabled) {
+    background: var(--color-accent-interactive);
+    color: var(--color-hover-fg);
+    border-color: var(--color-accent-interactive);
+  }
+}
+
+.ghost {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface);
+  padding: var(--space-6) var(--space-6);
+  color: var(--color-fg-muted);
+
+  &:hover:not(:disabled) {
+    background: var(--color-accent-interactive);
+    color: var(--color-hover-fg);
+  }
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.selfStart {
+  align-self: flex-start;
+}

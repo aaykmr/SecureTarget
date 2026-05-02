@@ -1,0 +1,88 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.inlineForm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-5);
+
+  /* Override shared Button primary pill — this form only */
+  button {
+    border-radius: var(--radius-md);
+  }
+}
+
+.error {
+  font-size: var(--text-body-sm);
+  line-height: 1.5;
+  color: var(--color-accent-error);
+}
+
+.successBox {
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--color-accent-success) 40%, transparent);
+  background: var(--color-surface-elevated);
+  padding: var(--space-6);
+  font-size: var(--text-body);
+  line-height: 1.5;
+  color: var(--color-fg-default);
+}
+
+.successLead {
+  font-weight: 500;
+}
+
+.keyCopyRow {
+  margin-top: var(--space-5);
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  box-sizing: border-box;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas);
+  padding: var(--space-4) var(--space-5);
+  cursor: copy;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--color-accent-cta) 45%, var(--color-border-subtle));
+    background: color-mix(in srgb, var(--color-accent-cta) 8%, var(--color-canvas));
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+  }
+}
+
+.keyCode {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: var(--text-caption);
+  line-height: 1.35;
+}
+
+.copyIcon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--color-fg-muted);
+  transition: color 0.15s ease;
+}
+
+.keyCopyRow:hover .copyIcon {
+  color: var(--color-accent-cta);
+}

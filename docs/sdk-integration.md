@@ -9,14 +9,14 @@
 Ingest requests must send the API key in the **`x-api-key`** header. The backend resolves the key to your project’s **`companyId`** and does not trust a different `companyId` sent in the JSON body for authorization.
 
 ## What this SDK does
-- Tracks click, login, and conversion events for attribution.
+- Records touchpoint, login, and conversion events for attribution.
 - Uses the bootstrap **`sessionId`** as the opaque **`token`** on every **`/v1/record`** body (same value as **`x-session-id`**), so you can correlate users in the dashboard by that id without sending a separate app JWT.
 - Does not collect device IDs, ad IDs, emails, or account PII.
 - Persists only hashed token server-side.
 
 ## Backend endpoints
 - `POST /v1/session/bootstrap` — **once per browser/app install** (or after `clearSession`). Body `{ occurredAt, device }` must include `device.platform` (`web` | `ios` | `android`); ingest **validates** this shape but **does not persist** device JSON—only an opaque **`sessionId`** and timestamps are stored server-side.
-- `POST /v1/record` — all attribution events (click, login, conversion). JSON body must include **`actionType`**: `click`, `login`, or `conversion`, plus the fields for that action (see contract below).
+- `POST /v1/record` — all attribution events (touchpoint record, login, conversion). JSON body must include **`actionType`**: `record`, `login`, or `conversion`, plus the fields for that action (see contract below).
 
 All requests require the **`x-api-key`** header (dashboard-issued key).
 
@@ -66,7 +66,7 @@ const sdk = init({
   endpoint: "https://your-ingest-host.example.com"
 });
 
-await sdk.trackClick({
+await sdk.trackRecord({
   eventId: crypto.randomUUID(),
   occurredAt: new Date().toISOString(),
   campaignId: "spring-launch"
@@ -91,20 +91,20 @@ Prefer injecting the API key via **environment variables** or server-side config
 ## iOS (Swift)
 - Bootstraps on first use, persists `sessionId`, sends **`x-session-id`** and uses the same id as **`token`** on `/v1/record`.
 - Optional: call `bootstrapSession(device:)` early with your own `SecureTargetDeviceDetails`.
-- API: `trackClick`, `trackLogin(eventId, occurredAt)`, `trackConversion`, `clearSession`. `setLoginToken` is deprecated (no-op).
+- API: `trackRecord`, `trackLogin(eventId, occurredAt)`, `trackConversion`, `clearSession`. `setLoginToken` is deprecated (no-op).
 
 ## Android (Kotlin)
 - Stores `sessionId` in SharedPreferences; sends **`x-session-id`** and **`token`** = session id on record calls.
 - Optional: `ensureSession(device)` before tracking for bootstrap details.
-- API: `ensureSession`, `trackClick`, `trackLogin(eventId, occurredAt, callback)`, `trackConversion`, `clearSession`. `setLoginToken` is deprecated (no-op).
+- API: `ensureSession`, `trackRecord`, `trackLogin(eventId, occurredAt, callback)`, `trackConversion`, `clearSession`. `setLoginToken` is deprecated (no-op).
 
 ## Event payload contract
 - Shared types and runtime guards are in `packages/contracts/src/events.ts`.
-- Every **`/v1/record`** body includes **`actionType`** (`click` | `login` | `conversion`) plus:
+- Every **`/v1/record`** body includes **`actionType`** (`record` | `login` | `conversion`) plus:
   - `eventId`
   - `companyId` (must still be present in JSON; ingest overwrites with the value tied to your API key)
   - `occurredAt` (ISO timestamp)
-- **`token`:** use the bootstrap **`sessionId`** (same string as **`x-session-id`**) for click (when using sessions), login, and conversion. The backend hashes it for storage and dashboard filters.
+- **`token`:** use the bootstrap **`sessionId`** (same string as **`x-session-id`**) for `record` (when using sessions), login, and conversion. The backend hashes it for storage and dashboard filters.
 
 ## Privacy defaults
 - No device fingerprinting.

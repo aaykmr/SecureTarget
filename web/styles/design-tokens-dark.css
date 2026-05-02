@@ -1,0 +1,68 @@
+/**
+ * Dark theme (primary identity — DESIGN.md).
+ * Default: applied via :root until html.light overrides.
+ */
+
+:root {
+  /* Palette primitives */
+  --palette-sanity-black: #0b0b0b;
+  --palette-pure-black: #000000;
+  --palette-dark-gray: #212121;
+  --palette-medium-dark: #353535;
+  --palette-medium-gray: #797979;
+  --palette-silver: #b9b9b9;
+  --palette-light-gray: #ededed;
+  --palette-white: #ffffff;
+  --palette-sanity-red: #f36458;
+  --palette-electric-blue: #0052ef;
+  --palette-light-blue: #55beff;
+  --palette-neon-green-srgb: #19d600;
+  --palette-error: #dd0000;
+  --palette-gpc-green: #37cd84;
+  /* Brand primary — Facebook-style blue; solid fills read clearly on dark canvas */
+  --palette-brand-blue: #1877f2;
+  --palette-brand-blue-hover: #166fe5;
+  /* Slightly lighter for links on dark grey / muted text */
+  --palette-brand-blue-bright: #4ba3ff;
+
+  /* Semantic — dark surfaces */
+  --color-canvas: var(--palette-sanity-black);
+  --color-surface: var(--palette-dark-gray);
+  --color-surface-elevated: var(--palette-medium-dark);
+  --color-overlay: rgba(0, 0, 0, 0.55);
+
+  /* Text */
+  --color-fg-default: var(--palette-white);
+  --color-fg-muted: var(--palette-silver);
+  --color-fg-subtle: var(--palette-medium-gray);
+  --color-fg-on-light: var(--palette-sanity-black);
+
+  /* Borders */
+  --color-border-minimal: var(--palette-sanity-black);
+  --color-border-subtle: var(--palette-dark-gray);
+  --color-border-default: var(--palette-medium-dark);
+
+  /* Accents — brand blue (same family light/dark) */
+  --color-accent-cta: var(--palette-brand-blue);
+  --color-accent-cta-hover: var(--palette-brand-blue-hover);
+  --color-accent-interactive: var(--palette-brand-blue-bright);
+  --color-accent-green: var(--palette-neon-green-srgb);
+  --color-accent-error: var(--palette-error);
+  --color-accent-success: var(--palette-gpc-green);
+
+  /* Interactive states */
+  --color-hover-bg: color-mix(in srgb, var(--palette-brand-blue) 38%, var(--color-canvas));
+  --color-hover-fg: var(--palette-white);
+  --focus-ring: var(--palette-brand-blue);
+
+  /* Inputs */
+  --color-input-bg: var(--palette-sanity-black);
+  --color-input-border: var(--palette-dark-gray);
+  --color-input-fg: var(--palette-silver);
+  --color-input-placeholder: var(--palette-medium-gray);
+  --color-input-focus-bg: color-mix(in srgb, var(--palette-brand-blue) 22%, var(--color-canvas));
+
+  /* Components */
+  --color-nav-border: var(--palette-dark-gray);
+  --color-card-border: var(--palette-medium-dark);
+}

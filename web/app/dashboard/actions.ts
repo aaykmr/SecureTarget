@@ -97,9 +97,11 @@ export type FetchSdkEventsResult =
   | { ok: false; error: string };
 
 /** Load `sdk_events` for a project. Optional `token` is the same opaque value sent in ingest; it is hashed server-side and never logged. */
+const ALLOWED_SDK_ACTION_TYPES = new Set(["record", "login", "conversion", "custom"]);
+
 export async function fetchSdkEventsAction(
   projectId: string,
-  options: { page: number; token?: string }
+  options: { page: number; token?: string; actionType?: string; eventLabel?: string }
 ): Promise<FetchSdkEventsResult> {
   const session = await auth();
   if (!session?.user?.id) {
@@ -120,9 +122,21 @@ export async function fetchSdkEventsAction(
     tokenHash = hashToken(raw, salt);
   }
 
-  const total = countSdkEventsForCompany(db, project.company_id, tokenHash);
-  const rows = listSdkEventsForCompany(db, project.company_id, {
+  const rawAction = options.actionType?.trim();
+  const actionType =
+    rawAction && ALLOWED_SDK_ACTION_TYPES.has(rawAction) ? rawAction : undefined;
+  const eventLabelRaw = options.eventLabel?.trim().slice(0, 500);
+  const eventLabel = eventLabelRaw || undefined;
+
+  const filter = {
     tokenHash,
+    actionType,
+    eventLabel
+  };
+
+  const total = countSdkEventsForCompany(db, project.company_id, filter);
+  const rows = listSdkEventsForCompany(db, project.company_id, {
+    ...filter,
     limit: SDK_EVENTS_PAGE_SIZE,
     offset
   });

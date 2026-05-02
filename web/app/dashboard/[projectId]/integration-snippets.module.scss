@@ -1,0 +1,54 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+}
+
+.blockTitle {
+  font-size: var(--text-body);
+  line-height: 1.5;
+  font-weight: 500;
+  color: var(--color-fg-default);
+}
+
+.blockLead {
+  margin-top: var(--space-3);
+  font-size: var(--text-caption);
+  line-height: 1.35;
+  color: var(--color-fg-muted);
+}
+
+.monoInline {
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+
+.endpoint {
+  margin-top: var(--space-3);
+  display: block;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-elevated);
+  padding: var(--space-4) var(--space-5);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: var(--text-caption);
+  line-height: 1.35;
+  color: var(--color-fg-default);
+}
+
+.pre {
+  margin-top: var(--space-3);
+  max-height: 16rem;
+  overflow: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-elevated);
+  padding: var(--space-6);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: var(--text-caption);
+  line-height: 1.35;
+  color: var(--color-fg-default);
+}
+
+.preTall {
+  max-height: 24rem;
+}

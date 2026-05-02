@@ -1,0 +1,47 @@
+.root {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-9);
+  background: var(--color-canvas);
+  padding: var(--space-7);
+}
+
+.intro {
+  display: flex;
+  max-width: 32rem;
+  flex-direction: column;
+  gap: var(--space-6);
+  text-align: center;
+}
+
+.title {
+  font-size: var(--text-heading-md);
+  line-height: 1.24;
+  font-weight: 600;
+  color: var(--color-fg-default);
+}
+
+.subtitle {
+  font-size: var(--text-body);
+  line-height: 1.5;
+  color: var(--color-fg-muted);
+}
+
+.footer {
+  font-size: var(--text-body);
+  line-height: 1.5;
+  color: var(--color-fg-muted);
+}
+
+.footerLink {
+  font-weight: 500;
+  color: var(--color-accent-interactive);
+  text-decoration: underline;
+
+  &:hover {
+    color: var(--color-fg-default);
+  }
+}

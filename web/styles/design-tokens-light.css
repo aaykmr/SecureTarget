@@ -1,0 +1,44 @@
+/**
+ * Light theme overrides — activated when html has .light (next-themes).
+ */
+
+html.light {
+  --palette-light-gray: #ededed;
+
+  --palette-sanity-black: #0b0b0b;
+  --palette-dark-gray: #212121;
+  --palette-medium-dark: #353535;
+
+  --color-canvas: var(--palette-light-gray);
+  --color-surface: var(--palette-white);
+  --color-surface-elevated: #f4f4f4;
+  --color-overlay: rgba(255, 255, 255, 0.72);
+
+  --color-fg-default: var(--palette-sanity-black);
+  --color-fg-muted: var(--palette-dark-gray);
+  --color-fg-subtle: var(--palette-medium-gray);
+  --color-fg-on-light: var(--palette-sanity-black);
+
+  --color-border-minimal: #e5e5e5;
+  --color-border-subtle: #e0e0e0;
+  --color-border-default: #d4d4d4;
+
+  /* Brand blue — same Meta/Facebook-style primary as dark (:root palette) */
+  --color-accent-cta: var(--palette-brand-blue);
+  --color-accent-cta-hover: var(--palette-brand-blue-hover);
+  --color-accent-interactive: var(--palette-brand-blue);
+  --color-hover-bg: var(--palette-brand-blue-hover);
+  --color-hover-fg: var(--palette-white);
+  --focus-ring: var(--palette-brand-blue);
+
+  --color-input-bg: var(--palette-white);
+  --color-input-border: var(--color-border-default);
+  --color-input-fg: var(--palette-sanity-black);
+  --color-input-placeholder: var(--palette-medium-gray);
+  --color-input-focus-bg: color-mix(in srgb, var(--palette-brand-blue) 10%, var(--palette-white));
+
+  --color-nav-border: var(--color-border-subtle);
+  --color-card-border: var(--color-border-default);
+
+  --shadow-ring-subtle: 0 0 0 1px var(--color-border-subtle);
+}

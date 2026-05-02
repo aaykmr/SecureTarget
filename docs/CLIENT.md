@@ -69,7 +69,7 @@ Send one JSON object per event.
 
 **Required for all events:**
 
-- **`actionType`:** `click` \| `login` \| `conversion`
+- **`actionType`:** `record` \| `login` \| `conversion` \| `custom` (use **`custom`** for views/screens and other analytics that should not create attribution **click** rows)
 - **`eventId`**, **`companyId`**, **`occurredAt`**
 
 Other fields depend on the action (e.g. **`token`**, **`conversionName`**). Official SDKs set **`token`** to the same value as **`sessionId`** from bootstrap (the install/session identifier). Exact validation rules are in **`packages/contracts/src/events.ts`**.
@@ -98,7 +98,7 @@ Use the **same** string for **`x-session-id`** and **`token`** (your bootstrap `
 
 | Platform | Integration |
 |----------|-------------|
-| **Web** | Hosted **`sdk.js`** URL from your provider, or npm **`@securetarget/web-sdk`**. Global: `SecureTarget.init({ apiKey, companyId, endpoint })`, then `trackClick` / `trackLogin` / `trackConversion`. |
+| **Web** | Hosted **`sdk.js`** URL from your provider, or npm **`@securetarget/web-sdk`**. Global: `SecureTarget.init({ apiKey, companyId, endpoint })`, then `trackRecord` / `trackLogin` / `trackConversion`. |
 | **iOS** | Initialize with config + `endpoint`; SDK bootstraps session and sends **`x-session-id`** on tracks. |
 | **Android** | `SecureTargetSdk` with `SecureTargetConfig(apiKey, companyId, endpoint)`; session id in app storage; same track APIs. |
 

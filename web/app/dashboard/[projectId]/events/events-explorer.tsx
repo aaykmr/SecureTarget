@@ -1,12 +1,61 @@
 "use client";
 
+import Close from "@mui/icons-material/Close";
+import clsx from "clsx";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "react-toastify";
 import { fetchSdkEventsAction } from "@/app/dashboard/actions";
 import type { SdkEventRow } from "@/lib/repos";
+import styles from "./events-explorer.module.scss";
 
 const LIST_PAYLOAD_MAX = 100;
+const LIST_EVENT_LABEL_MAX = 40;
+
+const ACTION_TYPE_OPTIONS = [
+  "record",
+  "login",
+  "conversion",
+  "custom",
+] as const;
+
+/** Conversion name or custom `eventType` from payload JSON (empty if none). */
+function payloadEventLabel(payloadJson: string): string {
+  try {
+    const p = JSON.parse(payloadJson) as Record<string, unknown>;
+    if (typeof p.conversionName === "string" && p.conversionName.trim())
+      return p.conversionName.trim();
+    if (typeof p.eventType === "string" && p.eventType.trim())
+      return p.eventType.trim();
+  } catch {
+    /* invalid JSON */
+  }
+  return "";
+}
+
+function shortenEventLabel(json: string, max: number): string {
+  const s = payloadEventLabel(json);
+  if (!s) return "—";
+  if (s.length <= max) return s;
+  return `${s.slice(0, max)}…`;
+}
+
+function eventsListPath(
+  projectId: string,
+  pageNum: number,
+  opts: { actionType: string; eventLabel: string },
+): string {
+  const p = new URLSearchParams();
+  if (pageNum > 1) p.set("page", String(pageNum));
+  if (opts.actionType) p.set("actionType", opts.actionType);
+  const ev = opts.eventLabel.trim();
+  if (ev) p.set("event", ev);
+  const q = p.toString();
+  return q
+    ? `/dashboard/${projectId}/events?${q}`
+    : `/dashboard/${projectId}/events`;
+}
 
 function shortenHash(hash: string | null): string {
   if (!hash) return "—";
@@ -18,18 +67,48 @@ function shortenPayload(json: string, max: number): string {
   return `${json.slice(0, max)}…`;
 }
 
-/** Renders stored ISO time in the viewer's local timezone. */
-function formatLocalDateTime(iso: string): string {
+/**
+ * Deterministic across SSR and first client paint (fixed locale + UTC).
+ * Avoid using this for user-visible final copy — prefer LocalDateTimeText.
+ */
+function formatUtcStable(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString("en-US", {
+    timeZone: "UTC",
     year: "numeric",
     month: "short",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit"
+    second: "2-digit",
+    hour12: false,
   });
+}
+
+/** SSR-safe first paint (UTC + fixed locale), then viewer locale/timezone after mount. */
+function LocalDateTimeText({ iso }: { iso: string }) {
+  const [text, setText] = useState(() => formatUtcStable(iso));
+
+  useEffect(() => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) {
+      setText(iso);
+      return;
+    }
+    setText(
+      d.toLocaleString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
+    );
+  }, [iso]);
+
+  return <span>{text}</span>;
 }
 
 function formatPayloadPretty(json: string): string {
@@ -40,33 +119,27 @@ function formatPayloadPretty(json: string): string {
   }
 }
 
-function pageHref(projectId: string, p: number): string {
-  return p <= 1 ? `/dashboard/${projectId}/events` : `/dashboard/${projectId}/events?page=${p}`;
-}
-
 function CopyButton({
   label,
   text,
   toastLabel,
-  onCopied
 }: {
   label: string;
   text: string;
-  /** Short phrase for the toast, e.g. "Payload" */
+  /** Short phrase for the toast, e.g. "payload" */
   toastLabel: string;
-  onCopied: (toast: string) => void;
 }) {
   return (
     <button
       type="button"
-      className="rounded-md border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
+      className={styles.copyButton}
       onClick={async (e) => {
         e.stopPropagation();
         try {
           await navigator.clipboard.writeText(text);
-          onCopied(`Copied ${toastLabel}`);
+          toast.success(`Copied ${toastLabel}`);
         } catch {
-          onCopied("Could not copy");
+          toast.error("Could not copy");
         }
       }}
     >
@@ -75,14 +148,55 @@ function CopyButton({
   );
 }
 
+function CopyableDd({
+  label,
+  copyText,
+  className,
+  children,
+}: {
+  /** Short label for the toast, e.g. "Event id" */
+  label: string;
+  copyText: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const copy = useCallback(
+    async (e: React.MouseEvent | React.KeyboardEvent) => {
+      e.stopPropagation();
+      try {
+        await navigator.clipboard.writeText(copyText);
+        toast.success(`Copied ${label}`);
+      } catch {
+        toast.error("Could not copy");
+      }
+    },
+    [copyText, label],
+  );
+
+  return (
+    <dd
+      role="button"
+      tabIndex={0}
+      className={clsx(styles.ddInteractive, className)}
+      onClick={(e) => void copy(e)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          void copy(e);
+        }
+      }}
+    >
+      {children}
+    </dd>
+  );
+}
+
 function EventDetailPanel({
   row,
   onClose,
-  onCopied
 }: {
   row: SdkEventRow;
   onClose: () => void;
-  onCopied: (msg: string) => void;
 }) {
   const fullJson = useMemo(
     () =>
@@ -99,12 +213,12 @@ function EventDetailPanel({
             } catch {
               return row.payload_json;
             }
-          })()
+          })(),
         },
         null,
-        2
+        2,
       ),
-    [row]
+    [row],
   );
 
   useEffect(() => {
@@ -117,76 +231,76 @@ function EventDetailPanel({
 
   return (
     <>
-      <button
-        type="button"
-        className="fixed inset-0 z-40 cursor-default bg-black/40 dark:bg-black/60"
-        aria-label="Close details"
-        onClick={onClose}
-      />
+      <button type="button" className={styles.backdrop} aria-label="Close details" onClick={onClose} />
       <aside
-        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col border-l border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-950"
+        className={styles.panel}
         role="dialog"
         aria-modal="true"
         aria-labelledby="event-detail-title"
       >
-        <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-          <h2 id="event-detail-title" className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+        <div className={styles.panelHeader}>
+          <h2 id="event-detail-title" className={styles.panelTitle}>
             Event details
           </h2>
-          <button
-            type="button"
-            className="rounded-md p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+          <button type="button" className={styles.iconBtn} onClick={onClose} aria-label="Close">
+            <Close className={styles.closeIcon} aria-hidden />
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-2 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
-          <CopyButton label="Copy row JSON" toastLabel="full row" text={fullJson} onCopied={onCopied} />
-          <CopyButton label="Copy payload" toastLabel="payload" text={formatPayloadPretty(row.payload_json)} onCopied={onCopied} />
-          <CopyButton label="Copy event id" toastLabel="event id" text={row.id} onCopied={onCopied} />
-          {row.token_hash ? (
-            <CopyButton label="Copy token hash" toastLabel="token hash" text={row.token_hash} onCopied={onCopied} />
-          ) : null}
-        </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-          <dl className="space-y-4 text-sm">
-            <div>
-              <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Event id</dt>
-              <dd className="mt-0.5 break-all font-mono text-xs text-zinc-900 dark:text-zinc-100">{row.id}</dd>
+        <div className={styles.panelBody}>
+          <dl className={styles.dl}>
+            <div className={styles.detailRow}>
+              <dt className={styles.dt}>Event id</dt>
+              <CopyableDd label="Event id" copyText={row.id} className={styles.dd}>
+                {row.id}
+              </CopyableDd>
             </div>
-            <div>
-              <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Time (your timezone)</dt>
-              <dd className="mt-0.5 font-mono text-xs text-zinc-900 dark:text-zinc-100">{formatLocalDateTime(row.created_at)}</dd>
+            <div className={styles.detailRow}>
+              <dt className={styles.dt}>Time (your timezone)</dt>
+              <CopyableDd label="Time (ISO)" copyText={row.created_at} className={styles.dd}>
+                <LocalDateTimeText key={row.created_at} iso={row.created_at} />
+              </CopyableDd>
             </div>
-            <div>
-              <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Stored (UTC / ISO)</dt>
-              <dd className="mt-0.5 break-all font-mono text-xs text-zinc-700 dark:text-zinc-300">{row.created_at}</dd>
+            <div className={styles.detailRow}>
+              <dt className={styles.dt}>Stored (UTC / ISO)</dt>
+              <CopyableDd label="Stored (UTC / ISO)" copyText={row.created_at} className={styles.ddMuted}>
+                {row.created_at}
+              </CopyableDd>
             </div>
-            <div>
-              <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Type</dt>
-              <dd className="mt-0.5 font-mono text-xs text-zinc-900 dark:text-zinc-100">{row.event_type}</dd>
+            <div className={styles.detailRow}>
+              <dt className={styles.dt}>Action type</dt>
+              <CopyableDd label="Action type" copyText={row.event_type} className={styles.dd}>
+                {row.event_type}
+              </CopyableDd>
             </div>
-            <div>
-              <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Company id</dt>
-              <dd className="mt-0.5 break-all font-mono text-xs text-zinc-900 dark:text-zinc-100">{row.company_id}</dd>
+            <div className={styles.detailRow}>
+              <dt className={styles.dt}>Event</dt>
+              <CopyableDd
+                label="Event"
+                copyText={payloadEventLabel(row.payload_json) || "—"}
+                className={styles.dd}
+              >
+                {payloadEventLabel(row.payload_json) || "—"}
+              </CopyableDd>
             </div>
-            <div>
-              <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Token hash</dt>
-              <dd className="mt-0.5 break-all font-mono text-xs text-zinc-900 dark:text-zinc-100">{row.token_hash ?? "—"}</dd>
+            <div className={styles.detailRow}>
+              <dt className={styles.dt}>Company id</dt>
+              <CopyableDd label="Company id" copyText={row.company_id} className={styles.dd}>
+                {row.company_id}
+              </CopyableDd>
             </div>
-            <div>
-              <dt className="mb-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">Payload</dt>
-              <dd>
-                <pre className="max-h-[40vh] overflow-auto rounded-md bg-zinc-100 p-3 font-mono text-xs text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100">
-                  {formatPayloadPretty(row.payload_json)}
-                </pre>
-              </dd>
+            <div className={styles.detailRow}>
+              <dt className={styles.dt}>Token hash</dt>
+              <CopyableDd label="Token hash" copyText={row.token_hash ?? ""} className={styles.dd}>
+                {row.token_hash ?? "—"}
+              </CopyableDd>
+            </div>
+            <div className={styles.detailRowPayload}>
+              <dt className={styles.dt}>Payload</dt>
+              <CopyableDd label="Payload" copyText={formatPayloadPretty(row.payload_json)}>
+                <pre className={styles.payloadPre}>{formatPayloadPretty(row.payload_json)}</pre>
+              </CopyableDd>
             </div>
           </dl>
         </div>
@@ -200,13 +314,19 @@ export function EventsExplorer({
   initialRows,
   initialTotal,
   initialPage,
-  pageSize
+  pageSize,
+  initialActionType = "",
+  initialEventLabel = "",
 }: {
   projectId: string;
   initialRows: SdkEventRow[];
   initialTotal: number;
   initialPage: number;
   pageSize: number;
+  /** Filter: `sdk_events.event_type` (ingest actionType). */
+  initialActionType?: string;
+  /** Filter: substring on payload `conversionName` / `eventType`. */
+  initialEventLabel?: string;
 }) {
   const router = useRouter();
   const [rows, setRows] = useState(initialRows);
@@ -217,7 +337,13 @@ export function EventsExplorer({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<SdkEventRow | null>(null);
-  const [copyToast, setCopyToast] = useState<string | null>(null);
+  const [actionTypeFilter, setActionTypeFilter] = useState(initialActionType);
+  const [eventLabelFilter, setEventLabelFilter] = useState(initialEventLabel);
+
+  useEffect(() => {
+    setActionTypeFilter(initialActionType);
+    setEventLabelFilter(initialEventLabel);
+  }, [initialActionType, initialEventLabel]);
 
   useEffect(() => {
     if (appliedToken !== null) return;
@@ -249,11 +375,24 @@ export function EventsExplorer({
     return `Showing ${start}–${end} of ${total}`;
   }, [total, page, pageSize]);
 
+  type FilterSnapshot = { actionType: string; eventLabel: string };
+
   const load = useCallback(
-    async (pageNum: number, token?: string) => {
+    async (pageNum: number, token?: string, snapshot?: FilterSnapshot) => {
       setPending(true);
       setError(null);
-      const res = await fetchSdkEventsAction(projectId, { page: pageNum, token });
+      const at = (
+        snapshot !== undefined ? snapshot.actionType : actionTypeFilter
+      ).trim();
+      const ev = (
+        snapshot !== undefined ? snapshot.eventLabel : eventLabelFilter
+      ).trim();
+      const res = await fetchSdkEventsAction(projectId, {
+        page: pageNum,
+        token,
+        actionType: at || undefined,
+        eventLabel: ev || undefined,
+      });
       setPending(false);
       if (!res.ok) {
         setError(res.error);
@@ -263,15 +402,55 @@ export function EventsExplorer({
       setTotal(res.total);
       setPage(res.page);
     },
-    [projectId]
+    [projectId, actionTypeFilter, eventLabelFilter],
   );
+
+  const filterQuery = useMemo(
+    () => ({ actionType: actionTypeFilter, eventLabel: eventLabelFilter }),
+    [actionTypeFilter, eventLabelFilter],
+  );
+
+  const hasActiveFilters = Boolean(actionTypeFilter || eventLabelFilter.trim());
+
+  /** Applies session token (if any) plus action/event filters in one step. */
+  const applyAllFilters = useCallback(
+    async (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      const raw = tokenInput.trim();
+      const snap = { actionType: actionTypeFilter, eventLabel: eventLabelFilter };
+      if (!raw) {
+        setAppliedToken(null);
+        setTokenInput("");
+        const path = eventsListPath(projectId, 1, snap);
+        router.push(path);
+        router.refresh();
+        return;
+      }
+      setAppliedToken(raw);
+      await load(1, raw, snap);
+    },
+    [tokenInput, actionTypeFilter, eventLabelFilter, projectId, router, load],
+  );
+
+  const clearAllFilters = useCallback(() => {
+    setTokenInput("");
+    setAppliedToken(null);
+    setActionTypeFilter("");
+    setEventLabelFilter("");
+    router.push(`/dashboard/${projectId}/events`);
+    router.refresh();
+  }, [projectId, router]);
 
   const pageNumbers = useMemo(() => {
     const maxButtons = 7;
     if (totalPages <= maxButtons) {
       return Array.from({ length: totalPages }, (_, i) => i + 1);
     }
-    const pages = new Set<number>([1, totalPages, page, page - 1, page + 1].filter((p) => p >= 1 && p <= totalPages));
+    const pages = new Set<number>(
+      [1, totalPages, page, page - 1, page + 1].filter(
+        (p) => p >= 1 && p <= totalPages,
+      ),
+    );
     const sorted = [...pages].sort((a, b) => a - b);
     const out: (number | "ellipsis")[] = [];
     for (let i = 0; i < sorted.length; i++) {
@@ -285,32 +464,21 @@ export function EventsExplorer({
     return out;
   }, [totalPages, page]);
 
-  const linkBtn =
-    "rounded-md border border-zinc-300 px-3 py-1.5 text-sm hover:bg-zinc-50 dark:border-zinc-600 dark:hover:bg-zinc-900";
-  const disabledBtn = "pointer-events-none opacity-40";
-
   return (
     <>
-      <div className="mt-6 flex flex-col gap-4">
-        <form
-          className="flex flex-col gap-3 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 sm:flex-row sm:items-end"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            const raw = tokenInput.trim();
-            if (!raw) {
-              setAppliedToken(null);
-              setTokenInput("");
-              router.push(pageHref(projectId, 1));
-              router.refresh();
-              return;
-            }
-            setAppliedToken(raw);
-            await load(1, raw);
-          }}
-        >
-          <div className="min-w-0 flex-1">
-            <label htmlFor="token-filter" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
-              Filter by session id (same as JSON token on /v1/record)
+      <div className={styles.stack}>
+        <form className={styles.filtersForm} onSubmit={applyAllFilters}>
+          <div className={styles.filtersHeader}>
+            <h2 className={styles.filtersHeading}>Filter events</h2>
+            <p className={styles.filtersIntro}>
+              Session id, action type, and event search apply together on the server. Submit with Apply or reset everything with Clear all.
+            </p>
+          </div>
+
+          <div className={styles.tokenBlock}>
+            <label htmlFor="token-filter" className={styles.label}>
+              Session id (same opaque token as JSON <code className={styles.codeInline}>token</code> on{" "}
+              <code className={styles.codeInline}>/v1/record</code>)
             </label>
             <input
               id="token-filter"
@@ -319,77 +487,93 @@ export function EventsExplorer({
               autoComplete="off"
               value={tokenInput}
               onChange={(e) => setTokenInput(e.target.value)}
-              placeholder="Optional — paste sess_… id (same as token field)"
-              className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 font-mono text-sm text-zinc-900 placeholder:text-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              placeholder="Optional — paste sess_… id"
+              className={styles.inputPassword}
             />
           </div>
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={pending}
-              className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-            >
+
+          <div className={styles.filtersDivider} aria-hidden />
+
+          <div className={styles.grid2}>
+            <div>
+              <label htmlFor="action-type-filter" className={styles.label}>
+                Action type
+              </label>
+              <select
+                id="action-type-filter"
+                value={actionTypeFilter}
+                onChange={(e) => setActionTypeFilter(e.target.value)}
+                className={styles.selectInput}
+              >
+                <option value="">All</option>
+                {ACTION_TYPE_OPTIONS.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="event-label-filter" className={styles.label}>
+                Event (payload)
+              </label>
+              <input
+                id="event-label-filter"
+                type="search"
+                value={eventLabelFilter}
+                onChange={(e) => setEventLabelFilter(e.target.value)}
+                placeholder="Matches conversionName or eventType in JSON"
+                autoComplete="off"
+                className={styles.searchInput}
+              />
+            </div>
+          </div>
+
+          <div className={styles.filterActions}>
+            <button type="submit" disabled={pending} className={styles.btnPrimarySm}>
               {pending ? "Loading…" : "Apply"}
             </button>
-            <button
-              type="button"
-              disabled={pending}
-              className="rounded-md border border-zinc-300 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-900"
-              onClick={() => {
-                setTokenInput("");
-                setAppliedToken(null);
-                setPage(1);
-                router.push(pageHref(projectId, 1));
-                router.refresh();
-              }}
-            >
-              Clear
+            <button type="button" disabled={pending} className={styles.btnGhostSm} onClick={() => clearAllFilters()}>
+              Clear all
             </button>
           </div>
+
+          <p className={styles.help}>
+            Action type filters the ingest discriminant (<code>record</code>, <code>login</code>, <code>conversion</code>,{" "}
+            <code>custom</code>). Event matches substring on payload fields <code>conversionName</code> and <code>eventType</code>.
+          </p>
         </form>
 
-        {error ? (
-          <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
-            {error}
-          </p>
-        ) : null}
+        {error ? <p className={styles.errorBanner}>{error}</p> : null}
 
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">{rangeLabel}</p>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+        <div className={styles.metaRow}>
+          <p className={styles.metaText}>{rangeLabel}</p>
+          <p className={styles.metaText}>
             Page {page} of {totalPages}
-            {appliedToken ? " · filtered" : ""}
+            {appliedToken ? " · session filter" : ""}
+            {hasActiveFilters ? " · type/event filter" : ""}
           </p>
         </div>
 
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">Tap a row to open full payload and copy options.</p>
+        <p className={styles.hint}>Tap a row to open full payload and copy options.</p>
 
-        <div className="overflow-x-auto overflow-y-hidden rounded-lg border border-zinc-200 px-3 dark:border-zinc-800 sm:px-4">
-          <table className="w-full min-w-[36rem] border-separate border-spacing-x-3 border-spacing-y-0 text-left text-sm">
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
             <thead>
-              <tr className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/50">
-                <th
-                  scope="col"
-                  className="whitespace-nowrap border-b border-zinc-200 py-3 pr-1 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:border-zinc-800 dark:text-zinc-400"
-                >
+              <tr className={styles.trHead}>
+                <th scope="col" className={clsx(styles.thBase, styles.thTime)}>
                   Time
                 </th>
-                <th
-                  scope="col"
-                  className="whitespace-nowrap border-b border-zinc-200 px-1 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:border-zinc-800 dark:text-zinc-400"
-                >
-                  Type
+                <th scope="col" className={clsx(styles.thBase, styles.thAction)}>
+                  Action type
                 </th>
-                <th
-                  scope="col"
-                  className="hidden whitespace-nowrap border-b border-zinc-200 px-1 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:border-zinc-800 dark:text-zinc-400 sm:table-cell"
-                >
+                <th scope="col" className={clsx(styles.thBase, styles.thEvent)}>
+                  Event
+                </th>
+                <th scope="col" className={clsx(styles.thBase, styles.thToken)}>
                   Token
                 </th>
-                <th
-                  scope="col"
-                  className="min-w-0 border-b border-zinc-200 py-3 pl-1 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:border-zinc-800 dark:text-zinc-400"
-                >
+                <th scope="col" className={clsx(styles.thBase, styles.thPayload)}>
                   Payload
                 </th>
               </tr>
@@ -397,7 +581,7 @@ export function EventsExplorer({
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="py-10 text-center text-zinc-500 dark:text-zinc-400">
+                  <td colSpan={5} className={styles.emptyCell}>
                     No rows match.
                   </td>
                 </tr>
@@ -407,9 +591,7 @@ export function EventsExplorer({
                     key={r.id}
                     role="button"
                     tabIndex={0}
-                    className={`cursor-pointer border-b border-zinc-100 transition-colors last:border-b-0 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900/80 ${
-                      selected?.id === r.id ? "bg-zinc-100 dark:bg-zinc-900" : ""
-                    }`}
+                    className={clsx(styles.tableRow, selected?.id === r.id && styles.tableRowSelected)}
                     onClick={() => setSelected(r)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
@@ -418,19 +600,25 @@ export function EventsExplorer({
                       }
                     }}
                   >
-                    <td className="align-middle whitespace-nowrap py-3 pr-1 text-xs text-zinc-600 dark:text-zinc-400" title={r.created_at}>
-                      {formatLocalDateTime(r.created_at)}
+                    <td className={styles.tdTime} title={r.created_at}>
+                      <LocalDateTimeText key={r.id} iso={r.created_at} />
                     </td>
-                    <td className="align-middle whitespace-nowrap px-1 py-3">
-                      <span className="inline-flex rounded-md bg-zinc-200 px-2 py-0.5 font-mono text-[11px] text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
-                        {r.event_type}
+                    <td className={styles.tdMid}>
+                      <span className={styles.badge}>{r.event_type}</span>
+                    </td>
+                    <td
+                      className={styles.tdEvent}
+                      title={payloadEventLabel(r.payload_json) || undefined}
+                    >
+                      <span className={styles.truncate}>
+                        {shortenEventLabel(r.payload_json, LIST_EVENT_LABEL_MAX)}
                       </span>
                     </td>
-                    <td className="hidden max-w-[8rem] align-middle px-1 py-3 font-mono text-[11px] text-zinc-500 sm:table-cell sm:truncate" title={r.token_hash ?? ""}>
+                    <td className={styles.tdToken} title={r.token_hash ?? ""}>
                       {shortenHash(r.token_hash)}
                     </td>
-                    <td className="min-w-0 max-w-0 align-middle py-3 pl-1 font-mono text-[11px] text-zinc-700 dark:text-zinc-300">
-                      <span className="block truncate" title={r.payload_json}>
+                    <td className={styles.tdPayload}>
+                      <span className={styles.truncate} title={r.payload_json}>
                         {shortenPayload(r.payload_json, LIST_PAYLOAD_MAX)}
                       </span>
                     </td>
@@ -442,72 +630,80 @@ export function EventsExplorer({
         </div>
 
         {totalPages > 1 ? (
-          <nav className="flex flex-col gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between">
+          <nav className={styles.pagination}>
             {!appliedToken ? (
               <>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className={styles.paginationCluster}>
                   {page <= 1 ? (
-                    <span className={`${linkBtn} ${disabledBtn}`}>First</span>
+                    <span className={styles.paginationDisabled}>First</span>
                   ) : (
-                    <Link href={pageHref(projectId, 1)} className={linkBtn} scroll={false}>
+                    <Link href={eventsListPath(projectId, 1, filterQuery)} className={styles.paginationLink} scroll={false}>
                       First
                     </Link>
                   )}
                   {page <= 1 ? (
-                    <span className={`${linkBtn} ${disabledBtn}`}>Previous</span>
+                    <span className={styles.paginationDisabled}>Previous</span>
                   ) : (
-                    <Link href={pageHref(projectId, page - 1)} className={linkBtn} scroll={false}>
+                    <Link
+                      href={eventsListPath(projectId, page - 1, filterQuery)}
+                      className={styles.paginationLink}
+                      scroll={false}
+                    >
                       Previous
                     </Link>
                   )}
                   {page >= totalPages ? (
-                    <span className={`${linkBtn} ${disabledBtn}`}>Next</span>
+                    <span className={styles.paginationDisabled}>Next</span>
                   ) : (
-                    <Link href={pageHref(projectId, page + 1)} className={linkBtn} scroll={false}>
+                    <Link
+                      href={eventsListPath(projectId, page + 1, filterQuery)}
+                      className={styles.paginationLink}
+                      scroll={false}
+                    >
                       Next
                     </Link>
                   )}
                   {page >= totalPages ? (
-                    <span className={`${linkBtn} ${disabledBtn}`}>Last</span>
+                    <span className={styles.paginationDisabled}>Last</span>
                   ) : (
-                    <Link href={pageHref(projectId, totalPages)} className={linkBtn} scroll={false}>
+                    <Link
+                      href={eventsListPath(projectId, totalPages, filterQuery)}
+                      className={styles.paginationLink}
+                      scroll={false}
+                    >
                       Last
                     </Link>
                   )}
                 </div>
-                <div className="flex flex-wrap items-center gap-1">
+                <div className={styles.paginationNums}>
                   {pageNumbers.map((item, i) =>
                     item === "ellipsis" ? (
-                      <span key={`e-${i}`} className="px-2 text-zinc-400">
+                      <span key={`e-${i}`} className={styles.ellipsis}>
                         …
                       </span>
                     ) : item === page ? (
-                      <span
-                        key={item}
-                        className="min-w-[2.25rem] rounded-md bg-zinc-900 px-2 py-1.5 text-center text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
-                        aria-current="page"
-                      >
+                      <span key={item} className={styles.pageCurrent} aria-current="page">
                         {item}
                       </span>
                     ) : (
                       <Link
                         key={item}
-                        href={pageHref(projectId, item)}
+                        href={eventsListPath(projectId, item, filterQuery)}
                         scroll={false}
-                        className="min-w-[2.25rem] rounded-md border border-zinc-200 px-2 py-1.5 text-center text-sm text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                        className={styles.pageLink}
                       >
                         {item}
                       </Link>
-                    )
+                    ),
                   )}
                 </div>
               </>
             ) : (
-              <div className="flex flex-wrap items-center gap-2">
+              <div className={styles.paginationCluster}>
                 <button
                   type="button"
                   disabled={pending || page <= 1}
-                  className={`${linkBtn} ${pending || page <= 1 ? disabledBtn : ""}`}
+                  className={pending || page <= 1 ? styles.paginationDisabled : styles.paginationLink}
                   onClick={() => void load(1, appliedToken)}
                 >
                   First
@@ -515,7 +711,7 @@ export function EventsExplorer({
                 <button
                   type="button"
                   disabled={pending || page <= 1}
-                  className={`${linkBtn} ${pending || page <= 1 ? disabledBtn : ""}`}
+                  className={pending || page <= 1 ? styles.paginationDisabled : styles.paginationLink}
                   onClick={() => void load(page - 1, appliedToken)}
                 >
                   Previous
@@ -523,7 +719,7 @@ export function EventsExplorer({
                 <button
                   type="button"
                   disabled={pending || page >= totalPages}
-                  className={`${linkBtn} ${pending || page >= totalPages ? disabledBtn : ""}`}
+                  className={pending || page >= totalPages ? styles.paginationDisabled : styles.paginationLink}
                   onClick={() => void load(page + 1, appliedToken)}
                 >
                   Next
@@ -531,15 +727,15 @@ export function EventsExplorer({
                 <button
                   type="button"
                   disabled={pending || page >= totalPages}
-                  className={`${linkBtn} ${pending || page >= totalPages ? disabledBtn : ""}`}
+                  className={pending || page >= totalPages ? styles.paginationDisabled : styles.paginationLink}
                   onClick={() => void load(totalPages, appliedToken)}
                 >
                   Last
                 </button>
-                <div className="flex flex-wrap gap-1">
+                <div className={styles.paginationNums}>
                   {pageNumbers.map((item, i) =>
                     item === "ellipsis" ? (
-                      <span key={`fe-${i}`} className="px-2 text-zinc-400">
+                      <span key={`fe-${i}`} className={styles.ellipsis}>
                         …
                       </span>
                     ) : (
@@ -547,16 +743,12 @@ export function EventsExplorer({
                         key={item}
                         type="button"
                         disabled={pending || item === page}
-                        className={`min-w-[2.25rem] rounded-md px-2 py-1.5 text-center text-sm ${
-                          item === page
-                            ? "bg-zinc-900 font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
-                            : "border border-zinc-200 text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
-                        }`}
+                        className={item === page ? styles.pageBtnCurrent : styles.pageBtn}
                         onClick={() => void load(item, appliedToken)}
                       >
                         {item}
                       </button>
-                    )
+                    ),
                   )}
                 </div>
               </div>
@@ -565,21 +757,8 @@ export function EventsExplorer({
         ) : null}
       </div>
 
-      {copyToast ? (
-        <div className="fixed bottom-4 left-1/2 z-[60] -translate-x-1/2 rounded-md bg-zinc-900 px-3 py-2 text-xs text-white shadow-lg dark:bg-zinc-100 dark:text-zinc-900">
-          {copyToast}
-        </div>
-      ) : null}
-
       {selected ? (
-        <EventDetailPanel
-          row={selected}
-          onClose={() => setSelected(null)}
-          onCopied={(msg) => {
-            setCopyToast(msg);
-            setTimeout(() => setCopyToast(null), 2000);
-          }}
-        />
+        <EventDetailPanel row={selected} onClose={() => setSelected(null)} />
       ) : null}
     </>
   );

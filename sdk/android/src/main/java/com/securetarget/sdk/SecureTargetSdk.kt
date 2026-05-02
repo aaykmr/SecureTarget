@@ -119,13 +119,13 @@ class SecureTargetSdk(
         if (code !in 200..299) throw IllegalStateException("POST $path HTTP $code")
     }
 
-    fun trackClick(eventId: String, occurredAt: String, campaignId: String? = null, callback: (Exception?) -> Unit) {
+    fun trackRecord(eventId: String, occurredAt: String, campaignId: String? = null, callback: (Exception?) -> Unit) {
         ioExecutor.execute {
             try {
                 ensureBlocking()
                 val sid = sessionId ?: throw IllegalStateException("Session missing")
                 val o = JSONObject().apply {
-                    put("actionType", "click")
+                    put("actionType", "record")
                     put("eventId", eventId)
                     put("companyId", config.companyId)
                     put("occurredAt", occurredAt)

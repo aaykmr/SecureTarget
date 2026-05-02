@@ -142,10 +142,10 @@ public final class SecureTargetSDK {
         }
     }
 
-    public func trackClick(eventId: String, occurredAt: String, campaignId: String? = nil) async throws {
+    public func trackRecord(eventId: String, occurredAt: String, campaignId: String? = nil) async throws {
         let sid = try await requireSessionId()
         var body: [String: Any] = [
-            "actionType": "click",
+            "actionType": "record",
             "eventId": eventId,
             "companyId": config.companyId,
             "occurredAt": occurredAt,

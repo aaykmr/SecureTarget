@@ -1,0 +1,56 @@
+/**
+ * Primitive tokens — spacing, radii, typography scale references.
+ * Edit here to change rhythm globally. Colors live in dark/light theme files.
+ */
+
+:root {
+  /* Spacing (8px base, DESIGN §5) */
+  --space-1: 1px;
+  --space-2: 2px;
+  --space-3: 4px;
+  --space-4: 6px;
+  --space-5: 8px;
+  --space-6: 12px;
+  --space-7: 16px;
+  --space-8: 24px;
+  --space-9: 32px;
+  --space-10: 48px;
+  --space-11: 64px;
+  --space-12: 96px;
+
+  /* Radius (DESIGN §5 border radius) */
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 6px;
+  --radius-lg: 12px;
+  --radius-pill: 9999px;
+
+  /* Typography scale sizes (rem) — pair with font vars from layout */
+  --text-display-hero: 7rem;
+  --text-hero-secondary: 4.5rem;
+  --text-section: 3rem;
+  --text-heading-lg: 2.375rem;
+  --text-heading-md: 2rem;
+  --text-heading-sm: 1.5rem;
+  --text-subheading: 1.25rem;
+  --text-body-lg: 1.125rem;
+  --text-body: 1rem;
+  --text-body-sm: 0.9375rem;
+  --text-caption: 0.8125rem;
+  --text-caption-sm: 0.75rem;
+  --text-micro: 0.6875rem;
+
+  /* Focus / elevation rings (DESIGN §6 — ring-only, no drop shadows) */
+  --shadow-ring-subtle: 0 0 0 1px var(--color-border-default);
+  --shadow-focus: 0 0 0 2px var(--color-accent-interactive);
+
+  /* Layout */
+  --container-max: 90rem;
+  --gutter-page: var(--space-9);
+}
+
+@media (max-width: 768px) {
+  :root {
+    --gutter-page: var(--space-7);
+  }
+}

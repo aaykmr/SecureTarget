@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { getDb } from "@/lib/db";
 import { countSdkEventsForCompany, getProjectForUser, listSdkEventsForCompany } from "@/lib/repos";
 import { EventsExplorer } from "./events-explorer";
+import styles from "./page.module.scss";
 
 const PAGE_SIZE = 50;
 
@@ -12,7 +13,7 @@ export default async function ProjectEventsPage({
   searchParams
 }: {
   params: Promise<{ projectId: string }>;
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; actionType?: string; event?: string }>;
 }) {
   const { projectId } = await params;
   const sp = await searchParams;
@@ -27,26 +28,38 @@ export default async function ProjectEventsPage({
     notFound();
   }
 
-  const total = countSdkEventsForCompany(db, project.company_id);
+  const allowedAction = new Set(["record", "login", "conversion", "custom"]);
+  const initialActionType =
+    typeof sp.actionType === "string" && allowedAction.has(sp.actionType) ? sp.actionType : "";
+  const initialEventLabel =
+    typeof sp.event === "string" ? sp.event.trim().slice(0, 500) : "";
+
+  const listFilter = {
+    ...(initialActionType ? { actionType: initialActionType } : {}),
+    ...(initialEventLabel ? { eventLabel: initialEventLabel } : {})
+  };
+
+  const total = countSdkEventsForCompany(db, project.company_id, listFilter);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const requested = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
   const page = Math.min(requested, totalPages);
   const offset = (page - 1) * PAGE_SIZE;
 
   const rows = listSdkEventsForCompany(db, project.company_id, {
+    ...listFilter,
     limit: PAGE_SIZE,
     offset
   });
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className={styles.root}>
       <div>
-        <Link href={`/dashboard/${projectId}`} className="text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200">
+        <Link href={`/dashboard/${projectId}`} className={styles.backLink}>
           ← Overview
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Events</h1>
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Ingested SDK rows from <code className="font-mono text-xs">sdk_events</code> for this project. Filter by the same opaque token you send in event payloads.
+        <h1 className={styles.title}>Events</h1>
+        <p className={styles.lead}>
+          Ingested SDK rows from <code className={styles.inlineCode}>sdk_events</code> for this project. Filter by the same opaque token you send in event payloads.
         </p>
       </div>
 
@@ -56,6 +69,8 @@ export default async function ProjectEventsPage({
         initialTotal={total}
         initialPage={page}
         pageSize={PAGE_SIZE}
+        initialActionType={initialActionType}
+        initialEventLabel={initialEventLabel}
       />
     </div>
   );

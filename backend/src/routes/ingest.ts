@@ -100,7 +100,7 @@ export async function handleIngest(req: IncomingMessage, res: ServerResponse, db
       return;
     }
 
-    if (payload.actionType === "click") {
+    if (payload.actionType === "record") {
       storeClick(db, payload);
       const salt = tokenSaltForCompany(payload.companyId);
       const tokenHash = payload.token ? hashToken(payload.token, salt) : undefined;
@@ -128,6 +128,17 @@ export async function handleIngest(req: IncomingMessage, res: ServerResponse, db
       markEventProcessed(db, payload.eventId, payload.companyId, payload.actionType);
       touchIngestSession(db, companyIdFromKey, req);
       sendJson(res, 202, { ok: true, attribution: result });
+      return;
+    }
+
+    if (payload.actionType === "custom") {
+      const salt = tokenSaltForCompany(payload.companyId);
+      const tokenHash = payload.token ? hashToken(payload.token, salt) : undefined;
+      const stored = { ...payload, ...(payload.token ? { token: "[redacted]" as const } : {}) };
+      storeSdkEvent(db, payload.companyId, "custom", stored, tokenHash);
+      markEventProcessed(db, payload.eventId, payload.companyId, payload.actionType);
+      touchIngestSession(db, companyIdFromKey, req);
+      sendJson(res, 202, { ok: true });
       return;
     }
   } catch (error) {

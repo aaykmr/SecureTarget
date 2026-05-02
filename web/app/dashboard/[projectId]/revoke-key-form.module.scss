@@ -1,0 +1,11 @@
+/* Specifier `form .revoke` beats `.secondary:hover` from shared Button. */
+form .revoke:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent-error) 22%, var(--color-canvas));
+  color: var(--palette-sanity-red);
+  border-color: color-mix(in srgb, var(--color-accent-error) 45%, transparent);
+}
+
+form .revoke:focus-visible:not(:disabled) {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent-error) 55%, transparent);
+}

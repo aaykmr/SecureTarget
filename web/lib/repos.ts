@@ -106,39 +106,70 @@ export interface SdkEventRow {
   created_at: string;
 }
 
-export function countSdkEventsForCompany(db: Database, companyId: string, tokenHash?: string | null): number {
-  const row = tokenHash
-    ? (db.prepare(`SELECT COUNT(*) AS c FROM sdk_events WHERE company_id = ? AND token_hash = ?`).get(companyId, tokenHash) as {
-        c: number;
-      })
-    : (db.prepare(`SELECT COUNT(*) AS c FROM sdk_events WHERE company_id = ?`).get(companyId) as { c: number });
+/** Filters for `sdk_events` list/count. `actionType` is the stored ingest discriminant (`event_type` column). */
+export type SdkEventsFilter = {
+  tokenHash?: string | null;
+  actionType?: string | null;
+  /** Substring match (case-insensitive) on `conversionName` or `eventType` in `payload_json`. */
+  eventLabel?: string | null;
+};
+
+function likeContainsPattern(term: string): string {
+  const esc = term.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+  return `%${esc}%`;
+}
+
+function buildSdkEventsWhere(
+  companyId: string,
+  filter: SdkEventsFilter
+): { clause: string; params: unknown[] } {
+  const parts: string[] = ["company_id = ?"];
+  const params: unknown[] = [companyId];
+
+  if (filter.tokenHash) {
+    parts.push("token_hash = ?");
+    params.push(filter.tokenHash);
+  }
+
+  const action = filter.actionType?.trim();
+  if (action) {
+    parts.push("event_type = ?");
+    params.push(action);
+  }
+
+  const label = filter.eventLabel?.trim();
+  if (label) {
+    const pat = likeContainsPattern(label);
+    parts.push(
+      `(LOWER(COALESCE(json_extract(payload_json, '$.conversionName'), '')) LIKE LOWER(?) ESCAPE '\\'
+        OR LOWER(COALESCE(json_extract(payload_json, '$.eventType'), '')) LIKE LOWER(?) ESCAPE '\\')`
+    );
+    params.push(pat, pat);
+  }
+
+  return { clause: parts.join(" AND "), params };
+}
+
+export function countSdkEventsForCompany(db: Database, companyId: string, filter: SdkEventsFilter = {}): number {
+  const { clause, params } = buildSdkEventsWhere(companyId, filter);
+  const row = db.prepare(`SELECT COUNT(*) AS c FROM sdk_events WHERE ${clause}`).get(...params) as { c: number };
   return Number(row.c);
 }
 
 export function listSdkEventsForCompany(
   db: Database,
   companyId: string,
-  opts: { tokenHash?: string | null; limit: number; offset: number }
+  opts: SdkEventsFilter & { limit: number; offset: number }
 ): SdkEventRow[] {
-  const { tokenHash, limit, offset } = opts;
-  if (tokenHash) {
-    return db
-      .prepare(
-        `SELECT id, company_id, event_type, token_hash, payload_json, created_at
-         FROM sdk_events
-         WHERE company_id = ? AND token_hash = ?
-         ORDER BY created_at DESC
-         LIMIT ? OFFSET ?`
-      )
-      .all(companyId, tokenHash, limit, offset) as SdkEventRow[];
-  }
+  const { limit, offset, ...filter } = opts;
+  const { clause, params } = buildSdkEventsWhere(companyId, filter);
   return db
     .prepare(
       `SELECT id, company_id, event_type, token_hash, payload_json, created_at
        FROM sdk_events
-       WHERE company_id = ?
+       WHERE ${clause}
        ORDER BY created_at DESC
        LIMIT ? OFFSET ?`
     )
-    .all(companyId, limit, offset) as SdkEventRow[];
+    .all(...params, limit, offset) as SdkEventRow[];
 }

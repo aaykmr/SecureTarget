@@ -84,7 +84,7 @@ npm test
 ## API quick reference
 All ingest requests are `POST` with JSON body and `x-api-key` header. The key must be one you generated in the dashboard. The server **ignores** any `companyId` in the body for authorization and attaches the `companyId` of the project that owns the key.
 
-- `/v1/record` — JSON body includes **`actionType`**: `click`, `login`, or `conversion`
+- `/v1/record` — JSON body includes **`actionType`**: `record`, `login`, `conversion`, or `custom` (telemetry/views; no `click_events` row)
 
 ## Example request
 Replace `YOUR_API_KEY` with a key from the dashboard (project page):

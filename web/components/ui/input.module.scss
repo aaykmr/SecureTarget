@@ -1,0 +1,5 @@
+@use "../../styles/mixins" as m;
+
+.root {
+  @include m.input-base;
+}
