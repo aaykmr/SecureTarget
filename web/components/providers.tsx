@@ -10,7 +10,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
         {children}
         <ToastContainer
-          theme="colored"
+          theme="dark"
           position="top-center"
           autoClose={2200}
           closeOnClick={false}

@@ -243,19 +243,18 @@
   width: 100%;
   min-width: 42rem;
   border-collapse: separate;
-  border-spacing: var(--space-3) 0;
+  border-spacing: 0;
   text-align: left;
   font-size: var(--text-body-sm);
 }
 
 .thBase {
   border-bottom: 1px solid var(--color-card-border);
-  padding-top: var(--space-5);
-  padding-bottom: var(--space-5);
+  padding-top: var(--space-6);
+  padding-bottom: var(--space-6);
   text-align: left;
-  font-size: var(--text-caption-sm);
+  font-size: var(--text-body);
   font-weight: 600;
-  text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-fg-default);
 }
@@ -338,10 +337,14 @@
   align-items: center;
   border-radius: var(--radius-md);
   background: var(--color-surface-elevated);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 11px;
   color: var(--color-fg-default);
+}
+
+.eventBadge {
+  background: var(--color-surface);
 }
 
 .tdMid {
@@ -596,15 +599,6 @@
   height: 1.25rem;
 }
 
-.panelTools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  border-bottom: 1px solid var(--color-border-subtle);
-  padding: var(--space-4) var(--space-5);
-  background: var(--color-canvas);
-}
-
 .panelBody {
   min-height: 0;
   flex: 1 1 0;
@@ -686,25 +680,4 @@
   font-size: var(--text-caption-sm);
   line-height: 1.45;
   color: var(--color-fg-default);
-}
-
-.copyButton {
-  border-radius: var(--radius-pill);
-  border: 1px solid color-mix(in srgb, var(--color-accent-cta) 55%, var(--color-border-default));
-  padding: var(--space-3) var(--space-5);
-  font-size: var(--text-caption-sm);
-  font-weight: 600;
-  color: var(--color-accent-interactive);
-  background: color-mix(in srgb, var(--color-accent-cta) 10%, var(--color-surface));
-  cursor: pointer;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
-
-  &:hover {
-    border-color: var(--color-accent-cta);
-    background: var(--color-accent-cta);
-    color: var(--palette-white);
-  }
 }

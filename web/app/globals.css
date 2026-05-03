@@ -3,7 +3,7 @@
 @import "../styles/design-tokens-light.css";
 @import "react-toastify/dist/ReactToastify.css";
 
-/* Layout only — `theme="colored"` on ToastContainer uses library default fill colors. */
+/* Layout only — toast colors come from react-toastify `theme="dark"` on ToastContainer. */
 .Toastify__toast-container {
   z-index: 70;
   padding: var(--space-5);

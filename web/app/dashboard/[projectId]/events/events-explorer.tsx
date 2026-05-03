@@ -4,7 +4,7 @@ import Close from "@mui/icons-material/Close";
 import clsx from "clsx";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "react-toastify";
 import { fetchSdkEventsAction } from "@/app/dashboard/actions";
 import type { SdkEventRow } from "@/lib/repos";
@@ -119,35 +119,6 @@ function formatPayloadPretty(json: string): string {
   }
 }
 
-function CopyButton({
-  label,
-  text,
-  toastLabel,
-}: {
-  label: string;
-  text: string;
-  /** Short phrase for the toast, e.g. "payload" */
-  toastLabel: string;
-}) {
-  return (
-    <button
-      type="button"
-      className={styles.copyButton}
-      onClick={async (e) => {
-        e.stopPropagation();
-        try {
-          await navigator.clipboard.writeText(text);
-          toast.success(`Copied ${toastLabel}`);
-        } catch {
-          toast.error("Could not copy");
-        }
-      }}
-    >
-      {label}
-    </button>
-  );
-}
-
 function CopyableDd({
   label,
   copyText,
@@ -198,28 +169,91 @@ function EventDetailPanel({
   row: SdkEventRow;
   onClose: () => void;
 }) {
-  const fullJson = useMemo(
-    () =>
-      JSON.stringify(
-        {
-          id: row.id,
-          company_id: row.company_id,
-          event_type: row.event_type,
-          token_hash: row.token_hash,
-          created_at: row.created_at,
-          payload: (() => {
-            try {
-              return JSON.parse(row.payload_json) as unknown;
-            } catch {
-              return row.payload_json;
-            }
-          })(),
-        },
-        null,
-        2,
-      ),
-    [row],
-  );
+  const detailFields: Array<{
+    key: string;
+    rowClassName: string;
+    dt: string;
+    copyLabel: string;
+    copyText: string;
+    ddClassName?: string;
+    content: ReactNode;
+  }> = useMemo(() => {
+    const eventLabel = payloadEventLabel(row.payload_json) || "—";
+    const prettyPayload = formatPayloadPretty(row.payload_json);
+    return [
+      {
+        key: "id",
+        rowClassName: styles.detailRow,
+        dt: "Event id",
+        copyLabel: "Event id",
+        copyText: row.id,
+        ddClassName: styles.dd,
+        content: row.id,
+      },
+      {
+        key: "timeLocal",
+        rowClassName: styles.detailRow,
+        dt: "Time (your timezone)",
+        copyLabel: "Time (ISO)",
+        copyText: row.created_at,
+        ddClassName: styles.dd,
+        content: <LocalDateTimeText key={row.created_at} iso={row.created_at} />,
+      },
+      {
+        key: "storedIso",
+        rowClassName: styles.detailRow,
+        dt: "Stored (UTC / ISO)",
+        copyLabel: "Stored (UTC / ISO)",
+        copyText: row.created_at,
+        ddClassName: styles.ddMuted,
+        content: row.created_at,
+      },
+      {
+        key: "actionType",
+        rowClassName: styles.detailRow,
+        dt: "Action type",
+        copyLabel: "Action type",
+        copyText: row.event_type,
+        ddClassName: styles.dd,
+        content: row.event_type,
+      },
+      {
+        key: "event",
+        rowClassName: styles.detailRow,
+        dt: "Event",
+        copyLabel: "Event",
+        copyText: eventLabel,
+        ddClassName: styles.dd,
+        content: eventLabel,
+      },
+      {
+        key: "companyId",
+        rowClassName: styles.detailRow,
+        dt: "Company id",
+        copyLabel: "Company id",
+        copyText: row.company_id,
+        ddClassName: styles.dd,
+        content: row.company_id,
+      },
+      {
+        key: "tokenHash",
+        rowClassName: styles.detailRow,
+        dt: "Token hash",
+        copyLabel: "Token hash",
+        copyText: row.token_hash ?? "",
+        ddClassName: styles.dd,
+        content: row.token_hash ?? "—",
+      },
+      {
+        key: "payload",
+        rowClassName: styles.detailRowPayload,
+        dt: "Payload",
+        copyLabel: "Payload",
+        copyText: prettyPayload,
+        content: <pre className={styles.payloadPre}>{prettyPayload}</pre>,
+      },
+    ];
+  }, [row]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -250,58 +284,18 @@ function EventDetailPanel({
 
         <div className={styles.panelBody}>
           <dl className={styles.dl}>
-            <div className={styles.detailRow}>
-              <dt className={styles.dt}>Event id</dt>
-              <CopyableDd label="Event id" copyText={row.id} className={styles.dd}>
-                {row.id}
-              </CopyableDd>
-            </div>
-            <div className={styles.detailRow}>
-              <dt className={styles.dt}>Time (your timezone)</dt>
-              <CopyableDd label="Time (ISO)" copyText={row.created_at} className={styles.dd}>
-                <LocalDateTimeText key={row.created_at} iso={row.created_at} />
-              </CopyableDd>
-            </div>
-            <div className={styles.detailRow}>
-              <dt className={styles.dt}>Stored (UTC / ISO)</dt>
-              <CopyableDd label="Stored (UTC / ISO)" copyText={row.created_at} className={styles.ddMuted}>
-                {row.created_at}
-              </CopyableDd>
-            </div>
-            <div className={styles.detailRow}>
-              <dt className={styles.dt}>Action type</dt>
-              <CopyableDd label="Action type" copyText={row.event_type} className={styles.dd}>
-                {row.event_type}
-              </CopyableDd>
-            </div>
-            <div className={styles.detailRow}>
-              <dt className={styles.dt}>Event</dt>
-              <CopyableDd
-                label="Event"
-                copyText={payloadEventLabel(row.payload_json) || "—"}
-                className={styles.dd}
-              >
-                {payloadEventLabel(row.payload_json) || "—"}
-              </CopyableDd>
-            </div>
-            <div className={styles.detailRow}>
-              <dt className={styles.dt}>Company id</dt>
-              <CopyableDd label="Company id" copyText={row.company_id} className={styles.dd}>
-                {row.company_id}
-              </CopyableDd>
-            </div>
-            <div className={styles.detailRow}>
-              <dt className={styles.dt}>Token hash</dt>
-              <CopyableDd label="Token hash" copyText={row.token_hash ?? ""} className={styles.dd}>
-                {row.token_hash ?? "—"}
-              </CopyableDd>
-            </div>
-            <div className={styles.detailRowPayload}>
-              <dt className={styles.dt}>Payload</dt>
-              <CopyableDd label="Payload" copyText={formatPayloadPretty(row.payload_json)}>
-                <pre className={styles.payloadPre}>{formatPayloadPretty(row.payload_json)}</pre>
-              </CopyableDd>
-            </div>
+            {detailFields.map((field) => (
+              <div key={field.key} className={field.rowClassName}>
+                <dt className={styles.dt}>{field.dt}</dt>
+                <CopyableDd
+                  label={field.copyLabel}
+                  copyText={field.copyText}
+                  className={field.ddClassName}
+                >
+                  {field.content}
+                </CopyableDd>
+              </div>
+            ))}
           </dl>
         </div>
       </aside>
@@ -610,7 +604,7 @@ export function EventsExplorer({
                       className={styles.tdEvent}
                       title={payloadEventLabel(r.payload_json) || undefined}
                     >
-                      <span className={styles.truncate}>
+                      <span className={clsx(styles.badge, styles.eventBadge)}>
                         {shortenEventLabel(r.payload_json, LIST_EVENT_LABEL_MAX)}
                       </span>
                     </td>
