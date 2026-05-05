@@ -1,9 +1,11 @@
 "use server";
 
-import { hashToken, tokenSaltForCompany } from "@securetarget/shared";
+import { hashToken, isCashfreeBillingEnforced, tokenSaltForCompany } from "@securetarget/shared";
+import { randomUUID } from "node:crypto";
 import { hashSync } from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
+import { cashfreeCreateSubscription } from "@/lib/cashfree";
 import { getDb } from "@/lib/db";
 import {
   countSdkEventsForCompany,
@@ -13,11 +15,17 @@ import {
   findUserByEmail,
   getProjectForUser,
   listSdkEventsForCompany,
-  revokeApiKey
+  revokeApiKey,
+  upsertBillingCheckoutSession,
+  userBillingAllowsProductUsage,
 } from "@/lib/repos";
 import type { SdkEventRow } from "@/lib/repos";
 
 export type ActionResult = { ok: true; message?: string; apiKey?: string } | { ok: false; error: string };
+
+export type CashfreeStartResult =
+  | { ok: true; subscriptionSessionId: string }
+  | { ok: false; error: string };
 
 export async function registerAction(_prev: ActionResult | undefined, formData: FormData): Promise<ActionResult> {
   const email = String(formData.get("email") ?? "").trim();
@@ -66,6 +74,12 @@ export async function createApiKeyAction(_prev: ActionResult | undefined, formDa
   if (!project) {
     return { ok: false, error: "Project not found." };
   }
+  if (isCashfreeBillingEnforced() && !userBillingAllowsProductUsage(db, session.user.id)) {
+    return {
+      ok: false,
+      error: "An active Cashfree subscription is required to generate API keys. Complete billing on the dashboard.",
+    };
+  }
   const { fullKey } = createApiKeyForProject(db, projectId);
   revalidatePath(`/dashboard/${projectId}`);
   revalidatePath("/dashboard");
@@ -112,6 +126,12 @@ export async function fetchSdkEventsAction(
   if (!project) {
     return { ok: false, error: "Project not found." };
   }
+  if (isCashfreeBillingEnforced() && !userBillingAllowsProductUsage(db, session.user.id)) {
+    return {
+      ok: false,
+      error: "Events are unavailable until your subscription is active. API keys for your projects have been revoked after a failed or lapsed payment.",
+    };
+  }
 
   const page = Math.max(1, options.page);
   const offset = (page - 1) * SDK_EVENTS_PAGE_SIZE;
@@ -142,4 +162,59 @@ export async function fetchSdkEventsAction(
   });
 
   return { ok: true, rows, total, page, pageSize: SDK_EVENTS_PAGE_SIZE };
+}
+
+/** Creates a Cashfree subscription session and stores the merchant subscription id for webhook correlation. */
+export async function startCashfreeSubscriptionAction(): Promise<CashfreeStartResult> {
+  const session = await auth();
+  if (!session?.user?.id || !session.user.email) {
+    return { ok: false, error: "Unauthorized." };
+  }
+  if (!isCashfreeBillingEnforced()) {
+    return { ok: false, error: "Cashfree billing is not configured (set CASHFREE_CLIENT_ID and CASHFREE_CLIENT_SECRET)." };
+  }
+  const planId = process.env.CASHFREE_PLAN_ID?.trim();
+  if (!planId) {
+    return { ok: false, error: "Set CASHFREE_PLAN_ID to your sandbox plan id from the Cashfree dashboard." };
+  }
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
+  if (!appUrl) {
+    return { ok: false, error: "Set NEXT_PUBLIC_APP_URL for subscription return_url." };
+  }
+  const db = getDb();
+  const merchantSubscriptionId = `st_${randomUUID()}`;
+  upsertBillingCheckoutSession(db, session.user.id, merchantSubscriptionId, session.user.email);
+  const phone = process.env.CASHFREE_CUSTOMER_PHONE?.trim() || "9999999999";
+  const name =
+    session.user.name?.trim() ||
+    session.user.email.split("@")[0]?.slice(0, 40) ||
+    "Customer";
+  const body = {
+    subscription_id: merchantSubscriptionId,
+    customer_details: {
+      customer_name: name,
+      customer_email: session.user.email,
+      customer_phone: phone,
+    },
+    plan_details: { plan_id: planId },
+    authorization_details: {
+      authorization_amount: 1,
+      authorization_amount_refund: true,
+      payment_methods: ["upi", "card"],
+    },
+    subscription_meta: {
+      return_url: `${appUrl}/dashboard`,
+      notification_channel: ["EMAIL"],
+    },
+    subscription_expiry_time: "2099-12-31T23:59:59Z",
+  };
+  try {
+    const { subscription_session_id } = await cashfreeCreateSubscription(body);
+    if (!subscription_session_id) {
+      return { ok: false, error: "Cashfree did not return subscription_session_id." };
+    }
+    return { ok: true, subscriptionSessionId: subscription_session_id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Cashfree request failed." };
+  }
 }

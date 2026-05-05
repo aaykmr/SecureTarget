@@ -1,9 +1,10 @@
+import { isCashfreeBillingEnforced } from "@securetarget/shared";
 import clsx from "clsx";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { getDb } from "@/lib/db";
-import { getProjectForUser, listApiKeysForProject } from "@/lib/repos";
+import { getBillingSubscription, getProjectForUser, listApiKeysForProject, userBillingAllowsProductUsage } from "@/lib/repos";
 import { CreateApiKeyForm } from "./create-key-form";
 import { IntegrationSnippets } from "./integration-snippets";
 import { RevokeKeyForm } from "./revoke-key-form";
@@ -22,6 +23,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
     notFound();
   }
   const keys = listApiKeysForProject(db, projectId);
+  const billingLocked = isCashfreeBillingEnforced() && !userBillingAllowsProductUsage(db, userId);
+  const billing = getBillingSubscription(db, userId);
 
   return (
     <div className={styles.root}>
@@ -36,6 +39,15 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
             View ingest events →
           </Link>
         </p>
+        {billingLocked ? (
+          <p className={styles.billingHint}>
+            Cashfree billing is required. Complete an active subscription from the{" "}
+            <Link href="/dashboard" className={styles.billingHintLink}>
+              dashboard home
+            </Link>
+            {billing ? ` (current status: ${billing.status}).` : "."}
+          </p>
+        ) : null}
       </div>
 
       <section className={styles.section}>
@@ -45,7 +57,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
           <code className={styles.inlineCode}>companyId</code>.
         </p>
         <div className={styles.formSlot}>
-          <CreateApiKeyForm projectId={project.id} />
+          <CreateApiKeyForm projectId={project.id} disabled={billingLocked} />
         </div>
         <ul className={styles.keyList}>
           {keys.length === 0 ? (

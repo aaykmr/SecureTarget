@@ -9,7 +9,7 @@ import styles from "./create-key-form.module.scss";
 
 const initial: ActionResult = { ok: false, error: "" };
 
-export function CreateApiKeyForm({ projectId }: { projectId: string }) {
+export function CreateApiKeyForm({ projectId, disabled }: { projectId: string; disabled?: boolean }) {
   const [state, formAction, pending] = useActionState(createApiKeyAction, initial);
 
   const copyApiKey = useCallback(async () => {
@@ -28,8 +28,8 @@ export function CreateApiKeyForm({ projectId }: { projectId: string }) {
     <div className={styles.root}>
       <form action={formAction} className={styles.inlineForm}>
         <input type="hidden" name="projectId" value={projectId} />
-        <Button type="submit" disabled={pending} variant="primary">
-          {pending ? "Generating…" : "Generate API key"}
+        <Button type="submit" disabled={pending || disabled} variant="primary">
+          {pending ? "Generating…" : disabled ? "Subscription required" : "Generate API key"}
         </Button>
       </form>
       {!state.ok && state.error ? <p className={styles.error}>{state.error}</p> : null}

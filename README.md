@@ -1,6 +1,7 @@
 # SecureTarget (Privacy Attribution SDK v1)
 
 Privacy-first attribution MVP with:
+
 - Ingest backend (events API)
 - Next.js dashboard (register, login, projects, API keys, integration snippets)
 - Web SDK
@@ -8,10 +9,12 @@ Privacy-first attribution MVP with:
 - SQLite persistence (shared DB file for ingest + dashboard)
 
 ## Prerequisites
+
 - Node.js 20+ (recommended)
 - npm 10+
 
 ## Setup
+
 From the project root:
 
 ```bash
@@ -29,6 +32,10 @@ Edit `.env` and set at least `NEXTAUTH_SECRET`, `API_KEY_PEPPER`, and paths/URLs
 Relative `SECURETARGET_DB_PATH` values (for example `securetarget.sqlite`) are resolved from the **monorepo root**, not from `web/` or `backend/`, so both processes share one file.
 
 When generating API keys, the dashboard hashes using **`web/lib/apiKeyPepper.ts`** so the pepper matches ingest even when Next bundles workspace packages (do not rely on `process.env` inside `packages/shared` alone from server actions).
+
+### Cashfree subscription (optional)
+
+If you set **`CASHFREE_CLIENT_ID`** and **`CASHFREE_CLIENT_SECRET`** (see `.env.example`), billing is **enforced**: users need an **active** Cashfree subscription to **generate API keys** and open **ingest events** in the dashboard, and the **ingest server** only accepts keys for owners with an active subscription row in SQLite (`billing_subscriptions`). Configure Cashfree webhooks to **`{NEXT_PUBLIC_APP_URL}/api/webhooks/cashfree`**. Failed or cancelled subscription payments set the account to **`ON_HOLD`** and **revoke all API keys** for that user’s projects.
 
 ## Run dashboard (Next.js)
 
@@ -64,17 +71,20 @@ npm --workspace @securetarget/backend run start
 ```
 
 Backend defaults:
+
 - Port: `8080` (override with `PORT`)
 - SQLite DB file: `securetarget.sqlite` in project root (override with `SECURETARGET_DB_PATH`)
 - Environment variables are loaded automatically from `.env`
 - Optional override: set `SECURETARGET_ENV_PATH` to load a different env file path
 
 ### Health check
+
 ```bash
 curl http://localhost:8080/healthz
 ```
 
 ## Run tests
+
 From root:
 
 ```bash
@@ -82,11 +92,13 @@ npm test
 ```
 
 ## API quick reference
+
 All ingest requests are `POST` with JSON body and `x-api-key` header. The key must be one you generated in the dashboard. The server **ignores** any `companyId` in the body for authorization and attaches the `companyId` of the project that owns the key.
 
 - `/v1/record` — JSON body includes **`actionType`**: `record`, `login`, `conversion`, or `custom` (telemetry/views; no `click_events` row)
 
 ## Example request
+
 Replace `YOUR_API_KEY` with a key from the dashboard (project page):
 
 ```bash
@@ -103,5 +115,6 @@ curl -X POST http://localhost:8080/v1/record \
 ```
 
 ## SDK integration docs
+
 - **`docs/CLIENT.md`** — **app integrator** guide (API keys, `endpoint`, bootstrap, `/v1/record`, SDKs, client-side troubleshooting).
 - **`docs/sdk-integration.md`** — Web/iOS/Android integration flow and payload contract details.

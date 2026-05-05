@@ -1,6 +1,11 @@
 import type { Database } from "better-sqlite3";
 import crypto from "node:crypto";
-import { apiKeyPepperFingerprint, generateApiKey, hashApiKey } from "@securetarget/shared";
+import {
+  apiKeyPepperFingerprint,
+  generateApiKey,
+  hashApiKey,
+  isCashfreeSubscriptionStatusActive,
+} from "@securetarget/shared";
 import { getDashboardApiKeyPepper } from "@/lib/apiKeyPepper";
 
 export interface UserRow {
@@ -172,4 +177,81 @@ export function listSdkEventsForCompany(
        LIMIT ? OFFSET ?`
     )
     .all(...params, limit, offset) as SdkEventRow[];
+}
+
+export interface BillingSubscriptionRow {
+  user_id: string;
+  merchant_subscription_id: string;
+  cf_subscription_id: string | null;
+  status: string;
+  customer_email: string | null;
+  updated_at: string;
+}
+
+export function getBillingSubscription(db: Database, userId: string): BillingSubscriptionRow | undefined {
+  return db.prepare(`SELECT * FROM billing_subscriptions WHERE user_id = ?`).get(userId) as
+    | BillingSubscriptionRow
+    | undefined;
+}
+
+export function getBillingByMerchantSubscriptionId(
+  db: Database,
+  merchantSubscriptionId: string,
+): BillingSubscriptionRow | undefined {
+  return db
+    .prepare(`SELECT * FROM billing_subscriptions WHERE merchant_subscription_id = ?`)
+    .get(merchantSubscriptionId) as BillingSubscriptionRow | undefined;
+}
+
+/** Start or restart a Cashfree checkout for this user (replaces merchant_subscription_id). */
+export function upsertBillingCheckoutSession(
+  db: Database,
+  userId: string,
+  merchantSubscriptionId: string,
+  customerEmail: string,
+): void {
+  db.prepare(
+    `INSERT INTO billing_subscriptions (user_id, merchant_subscription_id, status, customer_email, updated_at)
+     VALUES (?, ?, 'INITIALIZED', ?, datetime('now'))
+     ON CONFLICT(user_id) DO UPDATE SET
+       merchant_subscription_id = excluded.merchant_subscription_id,
+       status = 'INITIALIZED',
+       customer_email = excluded.customer_email,
+       cf_subscription_id = NULL,
+       updated_at = datetime('now')`,
+  ).run(userId, merchantSubscriptionId, customerEmail);
+}
+
+export function updateBillingSubscriptionFields(
+  db: Database,
+  merchantSubscriptionId: string,
+  fields: { cf_subscription_id?: string | null; status: string; customer_email?: string | null },
+): string | null {
+  const row = getBillingByMerchantSubscriptionId(db, merchantSubscriptionId);
+  if (!row) return null;
+  const cf = fields.cf_subscription_id !== undefined ? fields.cf_subscription_id : row.cf_subscription_id;
+  const em = fields.customer_email !== undefined ? fields.customer_email : row.customer_email;
+  db.prepare(
+    `UPDATE billing_subscriptions
+     SET cf_subscription_id = ?, status = ?, customer_email = ?, updated_at = datetime('now')
+     WHERE merchant_subscription_id = ?`,
+  ).run(cf, fields.status, em, merchantSubscriptionId);
+  return row.user_id;
+}
+
+export function userBillingAllowsProductUsage(db: Database, userId: string): boolean {
+  const row = getBillingSubscription(db, userId);
+  if (!row) return false;
+  return isCashfreeSubscriptionStatusActive(row.status);
+}
+
+export function revokeAllApiKeysForUser(db: Database, userId: string): number {
+  const res = db
+    .prepare(
+      `UPDATE api_keys SET revoked_at = datetime('now')
+       WHERE revoked_at IS NULL
+         AND project_id IN (SELECT id FROM projects WHERE user_id = ?)`,
+    )
+    .run(userId);
+  return res.changes;
 }

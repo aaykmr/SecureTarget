@@ -91,6 +91,20 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
 CREATE INDEX IF NOT EXISTS idx_api_keys_project ON api_keys(project_id);
 CREATE INDEX IF NOT EXISTS idx_projects_user ON projects(user_id);
 
+-- Cashfree billing (one row per dashboard user). When CASHFREE_* env is set, API keys + ingest require ACTIVE/BANK_APPROVAL_PENDING.
+CREATE TABLE IF NOT EXISTS billing_subscriptions (
+  user_id TEXT PRIMARY KEY,
+  merchant_subscription_id TEXT NOT NULL,
+  cf_subscription_id TEXT,
+  status TEXT NOT NULL DEFAULT 'INITIALIZED',
+  customer_email TEXT,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_billing_merchant_subscription ON billing_subscriptions(merchant_subscription_id);
+CREATE INDEX IF NOT EXISTS idx_billing_subscriptions_status ON billing_subscriptions(status);
+
 -- Client session: opaque id only (no device/IP persisted). Later requests use x-session-id only.
 CREATE TABLE IF NOT EXISTS client_sessions (
   id TEXT PRIMARY KEY,

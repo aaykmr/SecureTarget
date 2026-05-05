@@ -1,5 +1,10 @@
 import type { Database } from "better-sqlite3";
-import { apiKeyPepperFingerprint, getApiKeyPepper, hashApiKey } from "@securetarget/shared";
+import {
+  apiKeyPepperFingerprint,
+  getApiKeyPepper,
+  hashApiKey,
+  isCashfreeBillingEnforced,
+} from "@securetarget/shared";
 
 function ingestDebugEnabled(): boolean {
   const v = process.env.INGEST_DEBUG;
@@ -34,11 +39,15 @@ export function resolveCompanyIdFromApiKey(db: Database, apiKeyHeader: string): 
     pepperFingerprint: apiKeyPepperFingerprint(pepper)
   });
 
+  const billingJoin = isCashfreeBillingEnforced()
+    ? ` INNER JOIN billing_subscriptions bs ON bs.user_id = p.user_id AND bs.status IN ('ACTIVE', 'BANK_APPROVAL_PENDING')`
+    : "";
+
   const row = db
     .prepare(
       `SELECT p.company_id AS company_id
        FROM api_keys k
-       INNER JOIN projects p ON k.project_id = p.id
+       INNER JOIN projects p ON k.project_id = p.id${billingJoin}
        WHERE k.key_hash = ? AND k.revoked_at IS NULL`
     )
     .get(keyHash) as { company_id: string } | undefined;
