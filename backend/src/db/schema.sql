@@ -2,10 +2,15 @@ CREATE TABLE IF NOT EXISTS click_events (
   id TEXT PRIMARY KEY,
   company_id TEXT NOT NULL,
   token_hash TEXT,
+  event_source_partner TEXT,
+  media_source TEXT,
   campaign_id TEXT,
   adgroup_id TEXT,
   creative_id TEXT,
   channel TEXT,
+  cost_model TEXT,
+  cost_value REAL,
+  cost_currency TEXT,
   landing_url TEXT,
   referrer TEXT,
   clicked_at TEXT NOT NULL,
@@ -32,6 +37,7 @@ CREATE TABLE IF NOT EXISTS attribution_events (
   conversion_event_id TEXT NOT NULL,
   attributed_at TEXT NOT NULL,
   attribution_window_hours INTEGER NOT NULL,
+  reengagement_window_hours INTEGER,
   confidence REAL NOT NULL DEFAULT 1.0,
   FOREIGN KEY(click_event_id) REFERENCES click_events(id)
 );

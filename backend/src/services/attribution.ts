@@ -12,16 +12,21 @@ export function storeClick(db: Database, event: RecordEvent): void {
   const tokenHash = event.token ? hashToken(event.token, salt) : null;
   db.prepare(
     `INSERT INTO click_events
-      (id, company_id, token_hash, campaign_id, adgroup_id, creative_id, channel, landing_url, referrer, clicked_at, metadata_json)
-     VALUES (@id, @company_id, @token_hash, @campaign_id, @adgroup_id, @creative_id, @channel, @landing_url, @referrer, @clicked_at, @metadata_json)`
+      (id, company_id, token_hash, event_source_partner, media_source, campaign_id, adgroup_id, creative_id, channel, cost_model, cost_value, cost_currency, landing_url, referrer, clicked_at, metadata_json)
+     VALUES (@id, @company_id, @token_hash, @event_source_partner, @media_source, @campaign_id, @adgroup_id, @creative_id, @channel, @cost_model, @cost_value, @cost_currency, @landing_url, @referrer, @clicked_at, @metadata_json)`
   ).run({
     id: event.eventId,
     company_id: event.companyId,
     token_hash: tokenHash,
+    event_source_partner: event.eventSourcePartner ?? null,
+    media_source: event.mediaSource ?? null,
     campaign_id: event.campaignId ?? null,
     adgroup_id: event.adgroupId ?? null,
     creative_id: event.creativeId ?? null,
     channel: event.channel ?? null,
+    cost_model: event.costModel ?? null,
+    cost_value: event.costValue ?? null,
+    cost_currency: event.costCurrency ?? null,
     landing_url: event.landingUrl ?? null,
     referrer: event.referrer ?? null,
     clicked_at: event.occurredAt,
@@ -62,7 +67,15 @@ export function resolveAndStoreAttribution(
 ): { attributed: boolean; clickEventId?: string } {
   const salt = tokenSaltForCompany(event.companyId);
   const tokenHash = hashToken(event.token, salt);
-  const lowerBound = new Date(Date.parse(event.occurredAt) - windowHours * 3600 * 1000).toISOString();
+  const lookbackHours =
+    typeof event.attributionLookbackHours === "number" && Number.isFinite(event.attributionLookbackHours)
+      ? Math.max(1, Math.trunc(event.attributionLookbackHours))
+      : windowHours;
+  const reengagementHours =
+    typeof event.reengagementWindowHours === "number" && Number.isFinite(event.reengagementWindowHours)
+      ? Math.max(1, Math.trunc(event.reengagementWindowHours))
+      : null;
+  const lowerBound = new Date(Date.parse(event.occurredAt) - lookbackHours * 3600 * 1000).toISOString();
 
   const click = db
     .prepare(
@@ -80,8 +93,8 @@ export function resolveAndStoreAttribution(
 
   db.prepare(
     `INSERT INTO attribution_events
-      (id, company_id, token_hash, click_event_id, conversion_event_id, attributed_at, attribution_window_hours, confidence)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      (id, company_id, token_hash, click_event_id, conversion_event_id, attributed_at, attribution_window_hours, reengagement_window_hours, confidence)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     crypto.randomUUID(),
     event.companyId,
@@ -89,7 +102,8 @@ export function resolveAndStoreAttribution(
     click.id,
     event.eventId,
     event.occurredAt,
-    windowHours,
+    lookbackHours,
+    reengagementHours,
     1.0
   );
 

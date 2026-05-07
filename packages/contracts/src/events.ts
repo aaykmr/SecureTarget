@@ -13,10 +13,15 @@ export interface BaseEvent {
 export interface RecordEvent extends BaseEvent {
   actionType: "record";
   token?: string;
+  eventSourcePartner?: string;
+  mediaSource?: string;
   campaignId?: string;
   adgroupId?: string;
   creativeId?: string;
   channel?: string;
+  costModel?: string;
+  costValue?: number;
+  costCurrency?: string;
   landingUrl?: string;
   referrer?: string;
   metadata?: Record<string, unknown>;
@@ -34,6 +39,10 @@ export interface ConversionEvent extends BaseEvent {
   conversionName: string;
   value?: number;
   currency?: string;
+  attributionLookbackHours?: number;
+  reengagementWindowHours?: number;
+  isRetargeting?: boolean;
+  retargetingConversionType?: string;
   metadata?: Record<string, unknown>;
 }
 
@@ -53,6 +62,18 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function isOptionalString(value: unknown): boolean {
+  return value === undefined || typeof value === "string";
+}
+
+function isOptionalNumber(value: unknown): boolean {
+  return value === undefined || typeof value === "number";
+}
+
+function isOptionalBoolean(value: unknown): boolean {
+  return value === undefined || typeof value === "boolean";
+}
+
 function hasBaseFields(payload: Record<string, unknown>): boolean {
   return (
     typeof payload.eventId === "string" &&
@@ -63,6 +84,15 @@ function hasBaseFields(payload: Record<string, unknown>): boolean {
 
 export function isRecordEvent(payload: unknown): payload is RecordEvent {
   if (!isObject(payload) || payload.actionType !== "record" || !hasBaseFields(payload)) {
+    return false;
+  }
+  if (!isOptionalString(payload.eventSourcePartner) || !isOptionalString(payload.mediaSource)) {
+    return false;
+  }
+  if (!isOptionalString(payload.costModel) || !isOptionalString(payload.costCurrency)) {
+    return false;
+  }
+  if (!isOptionalNumber(payload.costValue)) {
     return false;
   }
   if (payload.metadata !== undefined && !isObject(payload.metadata)) {
@@ -95,6 +125,12 @@ export function isConversionEvent(payload: unknown): payload is ConversionEvent 
     return false;
   }
   if (typeof payload.conversionName !== "string" || payload.conversionName.length === 0) {
+    return false;
+  }
+  if (!isOptionalNumber(payload.attributionLookbackHours) || !isOptionalNumber(payload.reengagementWindowHours)) {
+    return false;
+  }
+  if (!isOptionalBoolean(payload.isRetargeting) || !isOptionalString(payload.retargetingConversionType)) {
     return false;
   }
   if (payload.metadata !== undefined && !isObject(payload.metadata)) {

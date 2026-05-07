@@ -105,6 +105,10 @@ Prefer injecting the API key via **environment variables** or server-side config
   - `companyId` (must still be present in JSON; ingest overwrites with the value tied to your API key)
   - `occurredAt` (ISO timestamp)
 - **`token`:** use the bootstrap **`sessionId`** (same string as **`x-session-id`**) for `record` (when using sessions), login, and conversion. The backend hashes it for storage and dashboard filters.
+- Privacy-first attribution extension fields:
+  - `record`: optional `eventSourcePartner`, `mediaSource`, `channel`, `campaignId`, `adgroupId`, `creativeId`, `costModel`, `costValue`, `costCurrency`.
+  - `conversion`: optional `attributionLookbackHours`, `reengagementWindowHours`, `isRetargeting`, `retargetingConversionType`, `value`, `currency`.
+  - Keep PII/device IDs out of payloads; put only business-safe values in `metadata`.
 
 ## Privacy defaults
 - No device fingerprinting.

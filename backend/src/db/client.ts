@@ -31,10 +31,26 @@ function migrateClientSessionsPrivacy(db: Database.Database): void {
   `);
 }
 
+function addColumnIfMissing(db: Database.Database, table: string, column: string, definition: string): void {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (cols.some((c) => c.name === column)) return;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+}
+
+function migrateAttributionExtensions(db: Database.Database): void {
+  addColumnIfMissing(db, "click_events", "event_source_partner", "TEXT");
+  addColumnIfMissing(db, "click_events", "media_source", "TEXT");
+  addColumnIfMissing(db, "click_events", "cost_model", "TEXT");
+  addColumnIfMissing(db, "click_events", "cost_value", "REAL");
+  addColumnIfMissing(db, "click_events", "cost_currency", "TEXT");
+  addColumnIfMissing(db, "attribution_events", "reengagement_window_hours", "INTEGER");
+}
+
 export function createDb(dbPath = "securetarget.sqlite"): Database.Database {
   const db = new Database(dbPath);
   const schemaSql = readFileSync(schemaPath, "utf8");
   db.exec(schemaSql);
   migrateClientSessionsPrivacy(db);
+  migrateAttributionExtensions(db);
   return db;
 }
