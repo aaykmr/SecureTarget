@@ -11,6 +11,9 @@ import {
   storeSdkEvent
 } from "../services/attribution.js";
 import { resolveCompanyIdFromApiKey } from "../services/apiKeyAuth.js";
+import { resolveInstallAttribution } from "../services/installAttribution.js";
+import { storeInstallSignal } from "../services/deviceIdentity.js";
+import { sendPartnerPostback } from "../services/partnerPostbacks.js";
 import { isClientSessionValid, touchClientSession } from "../services/clientSession.js";
 
 async function readJson(req: IncomingMessage): Promise<unknown> {
@@ -72,7 +75,12 @@ function touchIngestSession(db: Database, companyId: string, req: IncomingMessag
   }
 }
 
-export async function handleIngest(req: IncomingMessage, res: ServerResponse, db: Database): Promise<void> {
+export async function handleIngest(
+  req: IncomingMessage,
+  res: ServerResponse,
+  db: Database,
+  deviceDb: Database
+): Promise<void> {
   const apiKey = getApiKeyHeader(req);
   if (!apiKey) {
     sendJson(res, 401, { error: "Missing x-api-key" });
@@ -127,7 +135,38 @@ export async function handleIngest(req: IncomingMessage, res: ServerResponse, db
       storeSdkEvent(db, payload.companyId, payload.actionType, { ...payload, token: "[redacted]" }, tokenHash);
       markEventProcessed(db, payload.eventId, payload.companyId, payload.actionType);
       touchIngestSession(db, companyIdFromKey, req);
+      void sendPartnerPostback(db, deviceDb, {
+        companyId: payload.companyId,
+        eventType: "conversion",
+        eventId: payload.eventId
+      });
       sendJson(res, 202, { ok: true, attribution: result });
+      return;
+    }
+
+    if (payload.actionType === "install") {
+      const sessionId = getSessionIdHeader(req) ?? payload.token;
+      if (payload.installReferrer || payload.deepLinkUrl || payload.clickId) {
+        storeInstallSignal(deviceDb, {
+          companyId: payload.companyId,
+          sessionId,
+          signalType: "install",
+          payload: {
+            installReferrer: payload.installReferrer,
+            deepLinkUrl: payload.deepLinkUrl,
+            clickId: payload.clickId,
+            isReinstall: payload.isReinstall
+          },
+          receivedAt: payload.occurredAt
+        });
+      }
+      const attribution = resolveInstallAttribution(db, deviceDb, payload, sessionId);
+      const salt = tokenSaltForCompany(payload.companyId);
+      const tokenHash = hashToken(payload.token, salt);
+      storeSdkEvent(db, payload.companyId, payload.actionType, { ...payload, token: "[redacted]" }, tokenHash);
+      markEventProcessed(db, payload.eventId, payload.companyId, payload.actionType);
+      touchIngestSession(db, companyIdFromKey, req);
+      sendJson(res, 202, { ok: true, attribution });
       return;
     }
 

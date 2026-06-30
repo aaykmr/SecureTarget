@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-7);
+  min-width: 0;
 }
 
 .title {
@@ -21,6 +22,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  min-width: 0;
   font-size: var(--text-body);
   line-height: 1.5;
 }

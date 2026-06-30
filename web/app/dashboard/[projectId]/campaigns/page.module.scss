@@ -1,0 +1,212 @@
+@use "../../../../styles/mixins" as m;
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  max-width: 1100px;
+}
+
+.backLink {
+  font-size: var(--text-body-sm);
+  color: var(--color-fg-muted);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--color-fg-default);
+  }
+}
+
+.title {
+  font-size: var(--text-heading-sm);
+  font-weight: 600;
+  margin: 0;
+  color: var(--color-fg-default);
+}
+
+.lead {
+  margin: 0;
+  color: var(--color-fg-muted);
+  font-size: var(--text-body-sm);
+  line-height: 1.5;
+}
+
+.stats {
+  display: flex;
+  gap: var(--space-7);
+  flex-wrap: wrap;
+}
+
+.statCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-7) var(--space-8);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  min-width: 140px;
+}
+
+.statLabel {
+  font-size: var(--text-caption);
+  color: var(--color-fg-muted);
+}
+
+.statValue {
+  font-size: var(--text-heading-sm);
+  font-weight: 600;
+  color: var(--color-fg-default);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-body-sm);
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--color-border-default);
+  color: var(--color-fg-default);
+}
+
+.table th {
+  font-weight: 600;
+  color: var(--color-fg-muted);
+}
+
+.empty {
+  color: var(--color-fg-muted);
+  padding: var(--space-8) var(--space-6) !important;
+
+  a {
+    color: var(--color-accent-interactive);
+  }
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 560px;
+  width: 100%;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-6);
+
+  @media (max-width: 640px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  font-size: var(--text-body-sm);
+  color: var(--color-fg-muted);
+}
+
+.form input,
+.form textarea {
+  @include m.input-base;
+}
+
+.form button {
+  align-self: flex-start;
+  padding: var(--space-5) var(--space-7);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-accent-cta);
+  background: var(--color-accent-cta);
+  color: var(--palette-white);
+  cursor: pointer;
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background: var(--color-accent-cta-hover);
+    border-color: var(--color-accent-cta-hover);
+  }
+
+  &:focus-visible {
+    @include m.focus-ring;
+  }
+}
+
+.checkbox {
+  flex-direction: row !important;
+  align-items: center;
+  gap: var(--space-5) !important;
+}
+
+.sectionTitle {
+  font-size: var(--text-body);
+  font-weight: 600;
+  margin: var(--space-5) 0 0;
+  color: var(--color-fg-default);
+}
+
+.error {
+  color: var(--color-accent-error);
+  font-size: var(--text-body-sm);
+  margin: 0;
+}
+
+.success {
+  color: var(--color-accent-success);
+  font-size: var(--text-body-sm);
+  margin: 0;
+}
+
+.linkList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+}
+
+.linkItem {
+  padding: var(--space-7);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.url {
+  font-size: var(--text-caption);
+  word-break: break-all;
+  color: var(--color-fg-muted);
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+
+.muted {
+  color: var(--color-fg-subtle);
+}
+
+.dangerBtn {
+  align-self: flex-start;
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--text-caption);
+  border: 1px solid color-mix(in srgb, var(--color-accent-error) 50%, transparent);
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-accent-error);
+  cursor: pointer;
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-accent-error) 12%, transparent);
+  }
+}

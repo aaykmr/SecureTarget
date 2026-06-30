@@ -1,7 +1,7 @@
 export type ISODateString = string;
 
 /** Discriminator for `POST /v1/record` payloads */
-export type IngestActionType = "record" | "login" | "conversion" | "custom";
+export type IngestActionType = "record" | "login" | "conversion" | "custom" | "install";
 
 export interface BaseEvent {
   eventId: string;
@@ -46,13 +46,24 @@ export interface ConversionEvent extends BaseEvent {
   metadata?: Record<string, unknown>;
 }
 
+/** First app open / install signal — triggers install attribution matching. */
+export interface InstallEvent extends BaseEvent {
+  actionType: "install";
+  token: string;
+  isReinstall?: boolean;
+  installReferrer?: string;
+  deepLinkUrl?: string;
+  clickId?: string;
+  metadata?: Record<string, unknown>;
+}
+
 /** Arbitrary product/analytics events (views, screens, etc.). Stored only in `sdk_events`, not in `click_events`. */
 export interface CustomEvent extends BaseEvent {
   actionType: "custom";
   token?: string;
 }
 
-export type IngestEvent = RecordEvent | LoginEvent | ConversionEvent | CustomEvent;
+export type IngestEvent = RecordEvent | LoginEvent | ConversionEvent | CustomEvent | InstallEvent;
 
 function isIsoDate(value: unknown): value is ISODateString {
   return typeof value === "string" && !Number.isNaN(Date.parse(value));
@@ -149,9 +160,34 @@ export function isCustomEvent(payload: unknown): payload is CustomEvent {
   return true;
 }
 
+export function isInstallEvent(payload: unknown): payload is InstallEvent {
+  if (!isObject(payload) || payload.actionType !== "install" || !hasBaseFields(payload)) {
+    return false;
+  }
+  if (typeof payload.token !== "string" || payload.token.length === 0) {
+    return false;
+  }
+  if (!isOptionalBoolean(payload.isReinstall)) {
+    return false;
+  }
+  if (!isOptionalString(payload.installReferrer) || !isOptionalString(payload.deepLinkUrl) || !isOptionalString(payload.clickId)) {
+    return false;
+  }
+  if (payload.metadata !== undefined && !isObject(payload.metadata)) {
+    return false;
+  }
+  return true;
+}
+
 export function validateIngestEvent(payload: unknown): IngestEvent {
-  if (isRecordEvent(payload) || isLoginEvent(payload) || isConversionEvent(payload) || isCustomEvent(payload)) {
+  if (
+    isRecordEvent(payload) ||
+    isLoginEvent(payload) ||
+    isConversionEvent(payload) ||
+    isCustomEvent(payload) ||
+    isInstallEvent(payload)
+  ) {
     return payload;
   }
-  throw new Error("Invalid ingest event payload (expected actionType record | login | conversion | custom)");
+  throw new Error("Invalid ingest event payload (expected actionType record | login | conversion | custom | install)");
 }

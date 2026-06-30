@@ -1,24 +1,9 @@
 .shell {
   display: flex;
   min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   background: var(--color-canvas);
-}
-
-.mainColumn {
-  display: flex;
-  min-width: 0;
-  flex: 1 1 0;
-  flex-direction: column;
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  border-bottom: 1px solid var(--color-nav-border);
-  padding: var(--space-5) var(--space-7);
-  backdrop-filter: blur(8px);
 }
 
 .content {
@@ -27,5 +12,7 @@
   width: 100%;
   max-width: var(--container-max);
   flex: 1 1 0;
+  min-width: 0;
+  overflow-y: auto;
   padding: var(--space-7) var(--gutter-page) var(--space-8);
 }

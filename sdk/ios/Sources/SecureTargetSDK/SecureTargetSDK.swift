@@ -1,6 +1,8 @@
 import Foundation
 #if canImport(UIKit)
 import UIKit
+import AdSupport
+import AppTrackingTransparency
 #endif
 
 public struct SecureTargetConfig {
@@ -15,7 +17,14 @@ public struct SecureTargetConfig {
     }
 }
 
-/// Device snapshot sent **once** to `POST /v1/session/bootstrap`; later requests only send `x-session-id`.
+public struct SecureTargetUtmParams: Encodable {
+    public var source: String?
+    public var medium: String?
+    public var campaign: String?
+    public var term: String?
+    public var content: String?
+}
+
 public struct SecureTargetDeviceDetails: Encodable {
     public let platform = "ios"
     public var osVersion: String?
@@ -24,6 +33,11 @@ public struct SecureTargetDeviceDetails: Encodable {
     public var timezone: String?
     public var appVersion: String?
     public var sdkVersion: String?
+    public var advertisingId: String?
+    public var vendorId: String?
+    public var installReferrer: String?
+    public var deepLinkUrl: String?
+    public var utm: SecureTargetUtmParams?
 
     public init(
         osVersion: String? = nil,
@@ -31,7 +45,12 @@ public struct SecureTargetDeviceDetails: Encodable {
         locale: String? = nil,
         timezone: String? = nil,
         appVersion: String? = nil,
-        sdkVersion: String? = "0.2.0"
+        sdkVersion: String? = "0.3.0",
+        advertisingId: String? = nil,
+        vendorId: String? = nil,
+        installReferrer: String? = nil,
+        deepLinkUrl: String? = nil,
+        utm: SecureTargetUtmParams? = nil
     ) {
         self.osVersion = osVersion
         self.model = model
@@ -39,20 +58,56 @@ public struct SecureTargetDeviceDetails: Encodable {
         self.timezone = timezone
         self.appVersion = appVersion
         self.sdkVersion = sdkVersion
+        self.advertisingId = advertisingId
+        self.vendorId = vendorId
+        self.installReferrer = installReferrer
+        self.deepLinkUrl = deepLinkUrl
+        self.utm = utm
     }
 
-    public static func captureDefault() -> SecureTargetDeviceDetails {
+    public static func captureDefault(deepLinkUrl: String? = nil) -> SecureTargetDeviceDetails {
         let tz = TimeZone.current.identifier
         let loc = Locale.current.identifier
-        var model: String?
+        var vendorId: String?
+        var advertisingId: String?
         #if canImport(UIKit)
-        model = UIDevice.current.model
+        vendorId = UIDevice.current.identifierForVendor?.uuidString
+        if #available(iOS 14, *) {
+            if ATTrackingManager.trackingAuthorizationStatus == .authorized {
+                advertisingId = ASIdentifierManager.shared().advertisingIdentifier.uuidString
+            }
+        } else {
+            if ASIdentifierManager.shared().isAdvertisingTrackingEnabled {
+                advertisingId = ASIdentifierManager.shared().advertisingIdentifier.uuidString
+            }
+        }
         let os = "\(UIDevice.current.systemName) \(UIDevice.current.systemVersion)"
-        return SecureTargetDeviceDetails(osVersion: os, model: model, locale: loc, timezone: tz)
+        return SecureTargetDeviceDetails(
+            osVersion: os,
+            model: UIDevice.current.model,
+            locale: loc,
+            timezone: tz,
+            vendorId: vendorId,
+            advertisingId: advertisingId,
+            deepLinkUrl: deepLinkUrl
+        )
         #else
-        return SecureTargetDeviceDetails(locale: loc, timezone: tz)
+        return SecureTargetDeviceDetails(locale: loc, timezone: tz, deepLinkUrl: deepLinkUrl)
         #endif
     }
+}
+
+public struct InstallAttributionResult: Decodable {
+    public let attributed: Bool
+    public let isOrganic: Bool
+    public let confidence: Double
+    public let mediaSource: String?
+    public let campaignId: String?
+    public let adgroupId: String?
+    public let creativeId: String?
+    public let clickId: String?
+    public let deepLinkValue: String?
+    public let ruleName: String?
 }
 
 private struct BootstrapBody: Encodable {
@@ -64,6 +119,10 @@ private struct BootstrapResponse: Decodable {
     let sessionId: String
 }
 
+private struct IngestResponse: Decodable {
+    let attribution: InstallAttributionResult?
+}
+
 public enum SecureTargetError: Error {
     case missingSession
     case http(Int, String)
@@ -73,7 +132,11 @@ public enum SecureTargetError: Error {
 public final class SecureTargetSDK {
     private let config: SecureTargetConfig
     private let storageKey = "securetarget_session_id"
+    private let firstOpenKey = "securetarget_first_open_sent"
+    private let clickIdKey = "securetarget_click_id"
     private var sessionId: String?
+    private var storedClickId: String?
+    private var installCallbacks: [(InstallAttributionResult) -> Void] = []
     private let urlSession: URLSession
 
     public init(config: SecureTargetConfig, urlSession: URLSession = .shared) {
@@ -82,19 +145,24 @@ public final class SecureTargetSDK {
         if let s = UserDefaults.standard.string(forKey: storageKey) {
             self.sessionId = s
         }
+        self.storedClickId = UserDefaults.standard.string(forKey: clickIdKey)
     }
 
-    /// Deprecated: ingest `token` is always the bootstrap `sessionId` on every `/v1/record` call.
     @available(*, deprecated, message: "Record token is the bootstrap sessionId; this method has no effect.")
     public func setLoginToken(_ token: String) {}
 
-    /// Removes stored session so the next call bootstraps again.
     public func clearSession() {
         sessionId = nil
+        storedClickId = nil
         UserDefaults.standard.removeObject(forKey: storageKey)
+        UserDefaults.standard.removeObject(forKey: firstOpenKey)
+        UserDefaults.standard.removeObject(forKey: clickIdKey)
     }
 
-    /// Sends device details once; stores opaque `sessionId` for `x-session-id` on later requests.
+    public func onInstallAttribution(_ callback: @escaping (InstallAttributionResult) -> Void) {
+        installCallbacks.append(callback)
+    }
+
     public func bootstrapSession(device: SecureTargetDeviceDetails = .captureDefault()) async throws {
         if sessionId != nil { return }
         let url = config.endpoint.appendingPathComponent("/v1/session/bootstrap")
@@ -112,6 +180,33 @@ public final class SecureTargetSDK {
         let decoded = try JSONDecoder().decode(BootstrapResponse.self, from: data)
         sessionId = decoded.sessionId
         UserDefaults.standard.set(decoded.sessionId, forKey: storageKey)
+
+        if !UserDefaults.standard.bool(forKey: firstOpenKey) {
+            _ = try await trackInstall(eventId: UUID().uuidString, occurredAt: ISO8601DateFormatter().string(from: Date()))
+            UserDefaults.standard.set(true, forKey: firstOpenKey)
+        }
+    }
+
+    public func handleDeepLink(url: URL) async throws {
+        let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        let clickId = components?.queryItems?.first(where: { $0.name == "st_click_id" })?.value
+        if let clickId {
+            storedClickId = clickId
+            UserDefaults.standard.set(clickId, forKey: clickIdKey)
+        }
+        let mediaSource = components?.queryItems?.first(where: { $0.name == "pid" })?.value
+        let campaignId = components?.queryItems?.first(where: { $0.name == "c" })?.value
+        let adgroupId = components?.queryItems?.first(where: { $0.name == "adset" || $0.name == "af_adset" })?.value
+        let creativeId = components?.queryItems?.first(where: { $0.name == "ad" || $0.name == "af_ad" })?.value
+        try await trackRecord(
+            eventId: UUID().uuidString,
+            occurredAt: ISO8601DateFormatter().string(from: Date()),
+            mediaSource: mediaSource,
+            campaignId: campaignId,
+            adgroupId: adgroupId,
+            creativeId: creativeId,
+            deepLinkUrl: url.absoluteString
+        )
     }
 
     private func requireSessionId() async throws -> String {
@@ -128,7 +223,7 @@ public final class SecureTargetSDK {
         return h
     }
 
-    private func post(path: String, body: [String: Any]) async throws {
+    private func post(path: String, body: [String: Any]) async throws -> Data {
         try await bootstrapSession()
         guard sessionId != nil else { throw SecureTargetError.missingSession }
         let url = config.endpoint.appendingPathComponent(path)
@@ -136,13 +231,22 @@ public final class SecureTargetSDK {
         req.httpMethod = "POST"
         jsonHeaders().forEach { req.setValue($0.value, forHTTPHeaderField: $0.key) }
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
-        let (_, res) = try await urlSession.data(for: req)
+        let (data, res) = try await urlSession.data(for: req)
         guard let http = res as? HTTPURLResponse, (200 ... 299).contains(http.statusCode) else {
             throw SecureTargetError.http(-1, path)
         }
+        return data
     }
 
-    public func trackRecord(eventId: String, occurredAt: String, campaignId: String? = nil) async throws {
+    public func trackRecord(
+        eventId: String,
+        occurredAt: String,
+        mediaSource: String? = nil,
+        campaignId: String? = nil,
+        adgroupId: String? = nil,
+        creativeId: String? = nil,
+        deepLinkUrl: String? = nil
+    ) async throws {
         let sid = try await requireSessionId()
         var body: [String: Any] = [
             "actionType": "record",
@@ -151,11 +255,43 @@ public final class SecureTargetSDK {
             "occurredAt": occurredAt,
             "token": sid
         ]
-        if let c = campaignId { body["campaignId"] = c }
-        try await post(path: "/v1/record", body: body)
+        if let v = mediaSource { body["mediaSource"] = v }
+        if let v = campaignId { body["campaignId"] = v }
+        if let v = adgroupId { body["adgroupId"] = v }
+        if let v = creativeId { body["creativeId"] = v }
+        if let v = deepLinkUrl { body["landingUrl"] = v }
+        _ = try await post(path: "/v1/record", body: body)
     }
 
-    /// `token` on the wire is the bootstrap **sessionId** (same identifier as `x-session-id`).
+    public func trackInstall(
+        eventId: String,
+        occurredAt: String,
+        installReferrer: String? = nil,
+        deepLinkUrl: String? = nil,
+        clickId: String? = nil
+    ) async throws -> InstallAttributionResult {
+        let sid = try await requireSessionId()
+        var body: [String: Any] = [
+            "actionType": "install",
+            "eventId": eventId,
+            "companyId": config.companyId,
+            "occurredAt": occurredAt,
+            "token": sid
+        ]
+        if let v = installReferrer { body["installReferrer"] = v }
+        if let v = deepLinkUrl { body["deepLinkUrl"] = v }
+        if let v = clickId ?? storedClickId { body["clickId"] = v }
+        let data = try await post(path: "/v1/record", body: body)
+        let decoded = try? JSONDecoder().decode(IngestResponse.self, from: data)
+        let result = decoded?.attribution ?? InstallAttributionResult(
+            attributed: false, isOrganic: true, confidence: 0,
+            mediaSource: nil, campaignId: nil, adgroupId: nil, creativeId: nil,
+            clickId: nil, deepLinkValue: nil, ruleName: nil
+        )
+        installCallbacks.forEach { $0(result) }
+        return result
+    }
+
     public func trackLogin(eventId: String, occurredAt: String) async throws {
         let sid = try await requireSessionId()
         let body: [String: Any] = [
@@ -165,7 +301,7 @@ public final class SecureTargetSDK {
             "occurredAt": occurredAt,
             "token": sid
         ]
-        try await post(path: "/v1/record", body: body)
+        _ = try await post(path: "/v1/record", body: body)
     }
 
     public func trackConversion(eventId: String, occurredAt: String, conversionName: String, value: Double? = nil) async throws {
@@ -179,6 +315,6 @@ public final class SecureTargetSDK {
             "conversionName": conversionName
         ]
         if let v = value { body["value"] = v }
-        try await post(path: "/v1/record", body: body)
+        _ = try await post(path: "/v1/record", body: body)
     }
 }

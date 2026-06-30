@@ -1,9 +1,9 @@
 "use client";
 
-import DarkMode from "@mui/icons-material/DarkMode";
-import LightMode from "@mui/icons-material/LightMode";
+import { Moon02Icon, Sun01Icon } from "@hugeicons/core-free-icons";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { HugeIcon } from "@/components/huge-icon";
 import styles from "./theme-toggle.module.scss";
 
 export function ThemeToggle() {
@@ -27,7 +27,7 @@ export function ThemeToggle() {
       className={styles.button}
       onClick={() => setTheme(isDark ? "light" : "dark")}
     >
-      {isDark ? <LightMode className={styles.icon} /> : <DarkMode className={styles.icon} />}
+      <HugeIcon icon={isDark ? Sun01Icon : Moon02Icon} size={20} className={styles.icon} />
     </button>
   );
 }

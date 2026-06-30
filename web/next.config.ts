@@ -10,7 +10,16 @@ loadEnv({ path: path.join(repoRoot, ".env") });
 loadEnv({ path: path.join(repoRoot, ".env.local"), override: true });
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["better-sqlite3"]
+  serverExternalPackages: ["better-sqlite3"],
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        pathname: "/**",
+      },
+    ],
+  },
 };
 
 export default nextConfig;

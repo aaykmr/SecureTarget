@@ -44,6 +44,42 @@ function migrateAttributionExtensions(db: Database.Database): void {
   addColumnIfMissing(db, "click_events", "cost_value", "REAL");
   addColumnIfMissing(db, "click_events", "cost_currency", "TEXT");
   addColumnIfMissing(db, "attribution_events", "reengagement_window_hours", "INTEGER");
+  addColumnIfMissing(db, "attribution_events", "match_rule", "TEXT");
+  addColumnIfMissing(db, "attribution_events", "is_organic", "INTEGER");
+}
+
+function migrateInstallAttributionTables(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS tracking_links (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      slug TEXT NOT NULL,
+      destination_type TEXT NOT NULL DEFAULT 'web',
+      ios_url TEXT,
+      android_url TEXT,
+      web_url TEXT,
+      default_params_json TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_tracking_links_slug ON tracking_links(company_id, slug);
+    CREATE TABLE IF NOT EXISTS project_attribution_settings (
+      company_id TEXT PRIMARY KEY,
+      install_attribution_window_hours INTEGER NOT NULL DEFAULT 24,
+      conversion_attribution_window_hours INTEGER NOT NULL DEFAULT 168,
+      reengagement_window_hours INTEGER NOT NULL DEFAULT 168,
+      enable_probabilistic_matching INTEGER NOT NULL DEFAULT 1,
+      probabilistic_min_confidence REAL NOT NULL DEFAULT 0.7,
+      ios_app_id TEXT,
+      android_package TEXT,
+      ios_team_id TEXT,
+      android_sha256_certs_json TEXT,
+      associated_domain TEXT,
+      skan_ids_json TEXT,
+      partner_postback_url TEXT,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
 }
 
 export function createDb(dbPath = "securetarget.sqlite"): Database.Database {
@@ -52,5 +88,6 @@ export function createDb(dbPath = "securetarget.sqlite"): Database.Database {
   db.exec(schemaSql);
   migrateClientSessionsPrivacy(db);
   migrateAttributionExtensions(db);
+  migrateInstallAttributionTables(db);
   return db;
 }

@@ -15,8 +15,11 @@ Ingest requests must send the API key in the **`x-api-key`** header. The backend
 - Persists only hashed token server-side.
 
 ## Backend endpoints
-- `POST /v1/session/bootstrap` — **once per browser/app install** (or after `clearSession`). Body `{ occurredAt, device }` must include `device.platform` (`web` | `ios` | `android`); ingest **validates** this shape but **does not persist** device JSON—only an opaque **`sessionId`** and timestamps are stored server-side.
-- `POST /v1/record` — all attribution events (touchpoint record, login, conversion). JSON body must include **`actionType`**: `record`, `login`, or `conversion`, plus the fields for that action (see contract below).
+- `POST /v1/session/bootstrap` — **once per browser/app install** (or after `clearSession`). Body `{ occurredAt, device }` must include `device.platform` (`web` | `ios` | `android`). Device details are persisted in the SecureTarget device DB for install attribution matching; customer DB stores only opaque `sessionId`.
+- `POST /v1/record` — all attribution events. JSON body must include **`actionType`**: `record`, `login`, `conversion`, `install`, or `custom`.
+- `GET /v1/l/{slug}` — campaign tracking link (records click, redirects to store/web).
+- `POST /v1/skan/postback` — SKAdNetwork aggregate postbacks.
+- `POST /v1/costs` — ingest campaign cost data for ROAS.
 
 All requests require the **`x-api-key`** header (dashboard-issued key).
 
@@ -100,17 +103,20 @@ Prefer injecting the API key via **environment variables** or server-side config
 
 ## Event payload contract
 - Shared types and runtime guards are in `packages/contracts/src/events.ts`.
-- Every **`/v1/record`** body includes **`actionType`** (`record` | `login` | `conversion`) plus:
+- Every **`/v1/record`** body includes **`actionType`** (`record` | `login` | `conversion` | `install` | `custom`) plus:
   - `eventId`
   - `companyId` (must still be present in JSON; ingest overwrites with the value tied to your API key)
   - `occurredAt` (ISO timestamp)
 - **`token`:** use the bootstrap **`sessionId`** (same string as **`x-session-id`**) for `record` (when using sessions), login, and conversion. The backend hashes it for storage and dashboard filters.
 - Privacy-first attribution extension fields:
-  - `record`: optional `eventSourcePartner`, `mediaSource`, `channel`, `campaignId`, `adgroupId`, `creativeId`, `costModel`, `costValue`, `costCurrency`.
+  - `install`: optional `clickId`, `installReferrer`, `deepLinkUrl`, `isReinstall`. Triggers install attribution matching; response includes `attribution` object.
+  - `record`: optional `eventSourcePartner`, `mediaSource`, `channel`, `campaignId`, `adgroupId`, `creativeId`, `costModel`, `costValue`, `costCurrency`, `landingUrl`, `referrer`.
   - `conversion`: optional `attributionLookbackHours`, `reengagementWindowHours`, `isRetargeting`, `retargetingConversionType`, `value`, `currency`.
   - Keep PII/device IDs out of payloads; put only business-safe values in `metadata`.
 
-## Privacy defaults
-- No device fingerprinting.
-- No account-level PII requirements.
-- Tokens are hashed in backend with company-derived salt before persistence.
+## Privacy model
+
+- Customer attribution DB stores hashed tokens and campaign outcomes only.
+- Device details (advertising IDs, install referrer, IP at bootstrap) are stored in the separate SecureTarget device DB (`SECURETARGET_DEVICE_DB_PATH`) for install matching.
+- Bootstrap `device` may include `advertisingId`, `vendorId`, `installReferrer`, `deepLinkUrl`, `utm` when your app policy allows.
+- See `docs/install-attribution.md` and `docs/tracking-links.md` for install campaign flows.

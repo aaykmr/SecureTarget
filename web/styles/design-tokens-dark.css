@@ -5,12 +5,12 @@
 
 :root {
   /* Palette primitives */
-  --palette-sanity-black: #0b0b0b;
+  --palette-sanity-black: #16161d;
   --palette-pure-black: #000000;
-  --palette-dark-gray: #212121;
-  --palette-medium-dark: #353535;
-  --palette-medium-gray: #797979;
-  --palette-silver: #b9b9b9;
+  --palette-dark-gray: #22222c;
+  --palette-medium-dark: #3d3d4a;
+  --palette-medium-gray: #8a8a96;
+  --palette-silver: #c4c4ce;
   --palette-light-gray: #ededed;
   --palette-white: #ffffff;
   --palette-sanity-red: #f36458;
@@ -38,8 +38,8 @@
   --color-fg-on-light: var(--palette-sanity-black);
 
   /* Borders */
-  --color-border-minimal: var(--palette-sanity-black);
-  --color-border-subtle: var(--palette-dark-gray);
+  --color-border-minimal: var(--palette-dark-gray);
+  --color-border-subtle: var(--palette-medium-dark);
   --color-border-default: var(--palette-medium-dark);
 
   /* Accents — brand blue (same family light/dark) */
@@ -56,13 +56,13 @@
   --focus-ring: var(--palette-brand-blue);
 
   /* Inputs */
-  --color-input-bg: var(--palette-sanity-black);
-  --color-input-border: var(--palette-dark-gray);
+  --color-input-bg: var(--palette-dark-gray);
+  --color-input-border: var(--palette-medium-dark);
   --color-input-fg: var(--palette-silver);
   --color-input-placeholder: var(--palette-medium-gray);
-  --color-input-focus-bg: color-mix(in srgb, var(--palette-brand-blue) 22%, var(--color-canvas));
+  --color-input-focus-bg: color-mix(in srgb, var(--palette-brand-blue) 22%, var(--palette-dark-gray));
 
   /* Components */
-  --color-nav-border: var(--palette-dark-gray);
+  --color-nav-border: var(--palette-medium-dark);
   --color-card-border: var(--palette-medium-dark);
 }

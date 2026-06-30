@@ -1,18 +1,25 @@
 .sidebar {
   display: flex;
   width: 14rem;
+  height: 100vh;
+  max-height: 100vh;
   flex-shrink: 0;
   flex-direction: column;
+  overflow: hidden;
   border-right: 1px solid var(--color-nav-border);
   background: var(--color-surface);
 }
 
 .brandBlock {
+  flex-shrink: 0;
   border-bottom: 1px solid var(--color-nav-border);
   padding: var(--space-7) var(--space-7);
 }
 
 .brandLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-5);
   font-size: var(--text-body);
   line-height: 1.5;
   font-weight: 600;
@@ -24,6 +31,11 @@
   }
 }
 
+.brandIcon {
+  color: var(--color-accent-interactive);
+  flex-shrink: 0;
+}
+
 .tagline {
   margin-top: 2px;
   font-size: var(--text-caption);
@@ -33,12 +45,20 @@
 
 .nav {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 2px;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: var(--space-6);
 }
 
 .navLink {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex-shrink: 0;
   border-radius: var(--radius-md);
   padding: var(--space-5) var(--space-6);
   font-size: var(--text-body);
@@ -54,6 +74,11 @@
   }
 }
 
+.navIcon {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
 .navLinkActive {
   background: var(--color-surface-elevated);
   color: var(--color-fg-default);
@@ -62,4 +87,51 @@
     background: var(--color-surface-elevated);
     color: var(--color-fg-default);
   }
+}
+
+.navLinkActive .navIcon {
+  opacity: 1;
+  color: var(--color-accent-interactive);
+}
+
+.footer {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  border-top: 1px solid var(--color-nav-border);
+  padding: var(--space-6) var(--space-7);
+}
+
+.profile {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profileName {
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--color-fg-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profileEmail {
+  font-size: var(--text-caption);
+  line-height: 1.35;
+  color: var(--color-fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.footerActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
 }

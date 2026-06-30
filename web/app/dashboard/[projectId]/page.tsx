@@ -35,8 +35,16 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
         <h1 className={styles.title}>{project.name}</h1>
         <p className={styles.companyLine}>companyId: {project.company_id}</p>
         <p className={styles.eventsLinkWrap}>
+          <Link href={`/dashboard/${project.id}/campaigns`} className={styles.eventsLink}>
+            Campaign performance →
+          </Link>
+          {" · "}
+          <Link href={`/dashboard/${project.id}/links`} className={styles.eventsLink}>
+            Tracking links →
+          </Link>
+          {" · "}
           <Link href={`/dashboard/${project.id}/events`} className={styles.eventsLink}>
-            View ingest events →
+            Events →
           </Link>
         </p>
         {billingLocked ? (

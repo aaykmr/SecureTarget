@@ -23,7 +23,11 @@
 }
 
 @mixin input-base {
+  box-sizing: border-box;
+  display: block;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   border-radius: var(--radius-xs);
   border: 1px solid var(--color-input-border);
   background: var(--color-input-bg);

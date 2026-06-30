@@ -255,3 +255,266 @@ export function revokeAllApiKeysForUser(db: Database, userId: string): number {
     .run(userId);
   return res.changes;
 }
+
+export interface TrackingLinkRow {
+  id: string;
+  company_id: string;
+  name: string;
+  slug: string;
+  destination_type: string;
+  ios_url: string | null;
+  android_url: string | null;
+  web_url: string | null;
+  default_params_json: string | null;
+  created_at: string;
+}
+
+export function listTrackingLinksForCompany(db: Database, companyId: string): TrackingLinkRow[] {
+  return db
+    .prepare(`SELECT * FROM tracking_links WHERE company_id = ? ORDER BY created_at DESC`)
+    .all(companyId) as TrackingLinkRow[];
+}
+
+export function createTrackingLink(
+  db: Database,
+  input: {
+    companyId: string;
+    name: string;
+    slug: string;
+    destinationType: string;
+    iosUrl?: string;
+    androidUrl?: string;
+    webUrl?: string;
+  }
+): TrackingLinkRow {
+  const id = crypto.randomUUID();
+  db.prepare(
+    `INSERT INTO tracking_links
+      (id, company_id, name, slug, destination_type, ios_url, android_url, web_url)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    id,
+    input.companyId,
+    input.name,
+    input.slug,
+    input.destinationType,
+    input.iosUrl ?? null,
+    input.androidUrl ?? null,
+    input.webUrl ?? null
+  );
+  return db.prepare(`SELECT * FROM tracking_links WHERE id = ?`).get(id) as TrackingLinkRow;
+}
+
+export function deleteTrackingLinkForCompany(db: Database, companyId: string, linkId: string): boolean {
+  const res = db.prepare(`DELETE FROM tracking_links WHERE id = ? AND company_id = ?`).run(linkId, companyId);
+  return res.changes > 0;
+}
+
+export interface AttributionSettingsRow {
+  company_id: string;
+  install_attribution_window_hours: number;
+  conversion_attribution_window_hours: number;
+  reengagement_window_hours: number;
+  enable_probabilistic_matching: number;
+  probabilistic_min_confidence: number;
+  ios_app_id: string | null;
+  android_package: string | null;
+  ios_team_id: string | null;
+  android_sha256_certs_json: string | null;
+  associated_domain: string | null;
+  skan_ids_json: string | null;
+  partner_postback_url: string | null;
+}
+
+export function getAttributionSettingsRow(db: Database, companyId: string): AttributionSettingsRow | undefined {
+  return db.prepare(`SELECT * FROM project_attribution_settings WHERE company_id = ?`).get(companyId) as
+    | AttributionSettingsRow
+    | undefined;
+}
+
+export function upsertAttributionSettingsRow(
+  db: Database,
+  companyId: string,
+  fields: Partial<{
+    iosAppId: string;
+    androidPackage: string;
+    iosTeamId: string;
+    androidSha256Certs: string[];
+    associatedDomain: string;
+    skanIds: string[];
+    partnerPostbackUrl: string;
+    installAttributionWindowHours: number;
+    enableProbabilisticMatching: boolean;
+  }>
+): void {
+  const existing = getAttributionSettingsRow(db, companyId);
+  db.prepare(
+    `INSERT INTO project_attribution_settings
+      (company_id, install_attribution_window_hours, conversion_attribution_window_hours,
+       reengagement_window_hours, enable_probabilistic_matching, probabilistic_min_confidence,
+       ios_app_id, android_package, ios_team_id, android_sha256_certs_json, associated_domain,
+       skan_ids_json, partner_postback_url, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+     ON CONFLICT(company_id) DO UPDATE SET
+       install_attribution_window_hours = COALESCE(?, install_attribution_window_hours),
+       enable_probabilistic_matching = COALESCE(?, enable_probabilistic_matching),
+       ios_app_id = COALESCE(?, ios_app_id),
+       android_package = COALESCE(?, android_package),
+       ios_team_id = COALESCE(?, ios_team_id),
+       android_sha256_certs_json = COALESCE(?, android_sha256_certs_json),
+       associated_domain = COALESCE(?, associated_domain),
+       skan_ids_json = COALESCE(?, skan_ids_json),
+       partner_postback_url = COALESCE(?, partner_postback_url),
+       updated_at = datetime('now')`
+  ).run(
+    companyId,
+    fields.installAttributionWindowHours ?? existing?.install_attribution_window_hours ?? 24,
+    existing?.conversion_attribution_window_hours ?? 168,
+    existing?.reengagement_window_hours ?? 168,
+    fields.enableProbabilisticMatching !== undefined ? (fields.enableProbabilisticMatching ? 1 : 0) : (existing?.enable_probabilistic_matching ?? 1),
+    existing?.probabilistic_min_confidence ?? 0.7,
+    fields.iosAppId ?? existing?.ios_app_id ?? null,
+    fields.androidPackage ?? existing?.android_package ?? null,
+    fields.iosTeamId ?? existing?.ios_team_id ?? null,
+    fields.androidSha256Certs ? JSON.stringify(fields.androidSha256Certs) : existing?.android_sha256_certs_json ?? null,
+    fields.associatedDomain ?? existing?.associated_domain ?? null,
+    fields.skanIds ? JSON.stringify(fields.skanIds) : existing?.skan_ids_json ?? null,
+    fields.partnerPostbackUrl ?? existing?.partner_postback_url ?? null,
+    fields.installAttributionWindowHours ?? null,
+    fields.enableProbabilisticMatching !== undefined ? (fields.enableProbabilisticMatching ? 1 : 0) : null,
+    fields.iosAppId ?? null,
+    fields.androidPackage ?? null,
+    fields.iosTeamId ?? null,
+    fields.androidSha256Certs ? JSON.stringify(fields.androidSha256Certs) : null,
+    fields.associatedDomain ?? null,
+    fields.skanIds ? JSON.stringify(fields.skanIds) : null,
+    fields.partnerPostbackUrl ?? null
+  );
+}
+
+export interface CampaignSummaryRow {
+  media_source: string | null;
+  campaign_id: string | null;
+  adgroup_id: string | null;
+  creative_id: string | null;
+  installs: number;
+  conversions: number;
+  revenue: number;
+  cost: number;
+}
+
+export function campaignSummary(
+  db: Database,
+  companyId: string,
+  fromDate?: string,
+  toDate?: string
+): CampaignSummaryRow[] {
+  const params: unknown[] = [companyId];
+  let dateFilter = "";
+  if (fromDate) {
+    dateFilter += " AND ae.attributed_at >= ?";
+    params.push(fromDate);
+  }
+  if (toDate) {
+    dateFilter += " AND ae.attributed_at <= ?";
+    params.push(toDate);
+  }
+
+  return db
+    .prepare(
+      `SELECT
+         ce.media_source,
+         ce.campaign_id,
+         ce.adgroup_id,
+         ce.creative_id,
+         SUM(CASE WHEN se.event_type = 'install' THEN 1 ELSE 0 END) AS installs,
+         SUM(CASE WHEN se.event_type = 'conversion' THEN 1 ELSE 0 END) AS conversions,
+         SUM(CASE WHEN se.event_type = 'conversion' THEN COALESCE(json_extract(se.payload_json, '$.value'), 0) ELSE 0 END) AS revenue,
+         SUM(COALESCE(ce.cost_value, 0)) AS cost
+       FROM attribution_events ae
+       JOIN click_events ce ON ce.id = ae.click_event_id
+       LEFT JOIN sdk_events se ON se.id = ae.conversion_event_id OR (
+         se.company_id = ae.company_id AND se.event_type IN ('install', 'conversion')
+         AND se.id = ae.conversion_event_id
+       )
+       WHERE ae.company_id = ?${dateFilter}
+       GROUP BY ce.media_source, ce.campaign_id, ce.adgroup_id, ce.creative_id
+       ORDER BY installs DESC`
+    )
+    .all(...params) as CampaignSummaryRow[];
+}
+
+export interface InstallAttributionRow {
+  attribution_id: string;
+  install_event_id: string;
+  attributed_at: string;
+  confidence: number;
+  match_rule: string | null;
+  is_organic: number | null;
+  media_source: string | null;
+  campaign_id: string | null;
+  adgroup_id: string | null;
+  creative_id: string | null;
+}
+
+export function listInstallAttributions(db: Database, companyId: string, limit = 50): InstallAttributionRow[] {
+  return db
+    .prepare(
+      `SELECT
+         ae.id AS attribution_id,
+         ae.conversion_event_id AS install_event_id,
+         ae.attributed_at,
+         ae.confidence,
+         ae.match_rule,
+         ae.is_organic,
+         ce.media_source,
+         ce.campaign_id,
+         ce.adgroup_id,
+         ce.creative_id
+       FROM attribution_events ae
+       LEFT JOIN click_events ce ON ce.id = ae.click_event_id
+       WHERE ae.company_id = ?
+         AND EXISTS (SELECT 1 FROM sdk_events se WHERE se.id = ae.conversion_event_id AND se.event_type = 'install')
+       ORDER BY ae.attributed_at DESC
+       LIMIT ?`
+    )
+    .all(companyId, limit) as InstallAttributionRow[];
+}
+
+export interface OrganicBreakdown {
+  organic: number;
+  non_organic: number;
+}
+
+export function organicVsNonOrganic(db: Database, companyId: string): OrganicBreakdown {
+  const rows = db
+    .prepare(
+      `SELECT
+         SUM(CASE WHEN COALESCE(ae.is_organic, 0) = 1 THEN 1 ELSE 0 END) AS organic,
+         SUM(CASE WHEN COALESCE(ae.is_organic, 0) = 0 AND ae.click_event_id IS NOT NULL THEN 1 ELSE 0 END) AS non_organic
+       FROM attribution_events ae
+       JOIN sdk_events se ON se.id = ae.conversion_event_id AND se.event_type = 'install'
+       WHERE ae.company_id = ?`
+    )
+    .get(companyId) as { organic: number; non_organic: number };
+  return { organic: Number(rows?.organic ?? 0), non_organic: Number(rows?.non_organic ?? 0) };
+}
+
+export interface SkanPostbackRow {
+  id: string;
+  campaign_id: string | null;
+  media_source: string | null;
+  conversion_value: number | null;
+  postback_sequence: number | null;
+  received_at: string;
+}
+
+export function listSkanPostbacks(deviceDb: Database, companyId: string, limit = 50): SkanPostbackRow[] {
+  return deviceDb
+    .prepare(
+      `SELECT id, campaign_id, media_source, conversion_value, postback_sequence, received_at
+       FROM skan_postbacks WHERE company_id = ? ORDER BY received_at DESC LIMIT ?`
+    )
+    .all(companyId, limit) as SkanPostbackRow[];
+}
+

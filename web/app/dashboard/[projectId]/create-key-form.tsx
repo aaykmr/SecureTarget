@@ -1,9 +1,10 @@
 "use client";
 
-import ContentCopy from "@mui/icons-material/ContentCopy";
+import { Copy01Icon } from "@hugeicons/core-free-icons";
 import { useActionState, useCallback } from "react";
 import { toast } from "react-toastify";
 import { createApiKeyAction, type ActionResult } from "@/app/dashboard/actions";
+import { HugeIcon } from "@/components/huge-icon";
 import { Button } from "@/components/ui/button";
 import styles from "./create-key-form.module.scss";
 
@@ -43,7 +44,7 @@ export function CreateApiKeyForm({ projectId, disabled }: { projectId: string; d
             aria-label="Copy API key to clipboard"
           >
             <code className={styles.keyCode}>{state.apiKey}</code>
-            <ContentCopy className={styles.copyIcon} fontSize="small" aria-hidden />
+            <HugeIcon icon={Copy01Icon} size={16} className={styles.copyIcon} />
           </button>
         </div>
       ) : null}

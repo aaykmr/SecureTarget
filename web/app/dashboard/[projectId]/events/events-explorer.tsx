@@ -1,12 +1,13 @@
 "use client";
 
-import Close from "@mui/icons-material/Close";
+import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import clsx from "clsx";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "react-toastify";
 import { fetchSdkEventsAction } from "@/app/dashboard/actions";
+import { HugeIcon } from "@/components/huge-icon";
 import type { SdkEventRow } from "@/lib/repos";
 import styles from "./events-explorer.module.scss";
 
@@ -277,7 +278,7 @@ function EventDetailPanel({
             Event details
           </h2>
           <button type="button" className={styles.iconBtn} onClick={onClose} aria-label="Close">
-            <Close className={styles.closeIcon} aria-hidden />
+            <HugeIcon icon={Cancel01Icon} size={20} className={styles.closeIcon} />
           </button>
         </div>
 

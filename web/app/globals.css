@@ -3,12 +3,10 @@
 @import "../styles/design-tokens-light.css";
 @import "react-toastify/dist/ReactToastify.css";
 
-/* Layout only — toast colors come from react-toastify `theme="dark"` on ToastContainer. */
-.Toastify__toast-container {
-  z-index: 70;
-  padding: var(--space-5);
-  width: auto;
-  max-width: min(28rem, calc(100vw - 2 * var(--space-5)));
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 body {
@@ -18,6 +16,14 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Layout only — toast colors come from react-toastify `theme="dark"` on ToastContainer. */
+.Toastify__toast-container {
+  z-index: 70;
+  padding: var(--space-5);
+  width: auto;
+  max-width: min(28rem, calc(100vw - 2 * var(--space-5)));
 }
 
 code,

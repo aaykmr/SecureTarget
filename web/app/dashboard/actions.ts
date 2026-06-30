@@ -111,7 +111,7 @@ export type FetchSdkEventsResult =
   | { ok: false; error: string };
 
 /** Load `sdk_events` for a project. Optional `token` is the same opaque value sent in ingest; it is hashed server-side and never logged. */
-const ALLOWED_SDK_ACTION_TYPES = new Set(["record", "login", "conversion", "custom"]);
+const ALLOWED_SDK_ACTION_TYPES = new Set(["record", "login", "conversion", "custom", "install"]);
 
 export async function fetchSdkEventsAction(
   projectId: string,

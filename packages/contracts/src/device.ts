@@ -1,5 +1,13 @@
-/** Sent on POST /v1/session/bootstrap (validated by ingest; not persisted—only opaque session id is stored server-side). Never repeat on later ingest calls. */
+/** Sent on POST /v1/session/bootstrap (validated by ingest; persisted in SecureTarget device DB). Never repeat on later ingest calls. */
 export type DevicePlatform = "web" | "ios" | "android";
+
+export interface UtmParams {
+  source?: string;
+  medium?: string;
+  campaign?: string;
+  term?: string;
+  content?: string;
+}
 
 export interface DeviceDetails {
   platform: DevicePlatform;
@@ -18,6 +26,16 @@ export interface DeviceDetails {
   sdkVersion?: string;
   language?: string;
   hardwareConcurrency?: number;
+  /** IDFA (iOS) or GAID (Android) when user consented */
+  advertisingId?: string;
+  /** iOS identifierForVendor */
+  vendorId?: string;
+  /** Android Play Install Referrer string */
+  installReferrer?: string;
+  /** Deep link / Universal Link URL on cold start */
+  deepLinkUrl?: string;
+  /** Parsed UTM parameters from landing URL */
+  utm?: UtmParams;
   /** Extra non-PII fields */
   metadata?: Record<string, unknown>;
 }
