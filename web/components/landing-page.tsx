@@ -274,10 +274,20 @@ export function LandingPage() {
               </Link>
             </div>
             <footer className={styles.footer}>
-              <span className={styles.footerBrand}>
-                <HugeIcon icon={Shield01Icon} size={18} />
-                SecureTarget
-              </span>
+              <div className={styles.footerTop}>
+                <span className={styles.footerBrand}>
+                  <HugeIcon icon={Shield01Icon} size={18} />
+                  SecureTarget
+                </span>
+                <nav className={styles.footerNav} aria-label="Legal">
+                  <Link href="/privacy" className={styles.footerLink}>
+                    Privacy Policy
+                  </Link>
+                  <Link href="/terms" className={styles.footerLink}>
+                    Terms &amp; Conditions
+                  </Link>
+                </nav>
+              </div>
               <span className={styles.footerCopy}>Privacy-first install & campaign attribution</span>
             </footer>
           </div>
