@@ -1,6 +1,38 @@
 .root {
-  border-radius: var(--radius-md);
+  position: relative;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--color-card-border);
-  background: var(--color-surface);
+  background: var(--dash-surface-gradient);
   padding: var(--space-8);
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 1px;
+    background: var(--dash-accent-line);
+    opacity: 0.75;
+    pointer-events: none;
+  }
+}
+
+.elevated {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent-interactive) 8%, transparent);
+}
+
+.interactive {
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--color-accent-interactive) 35%, var(--color-card-border));
+    transform: translateY(-1px);
+  }
+}
+
+.compact {
+  padding: var(--space-7);
 }

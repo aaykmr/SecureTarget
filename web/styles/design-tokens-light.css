@@ -40,5 +40,22 @@ html.light {
   --color-nav-border: var(--color-border-subtle);
   --color-card-border: var(--color-border-default);
 
-  --shadow-ring-subtle: 0 0 0 1px var(--color-border-subtle);
+  --dash-accent-glow: color-mix(in srgb, var(--palette-brand-blue) 14%, transparent);
+  --dash-accent-line: linear-gradient(
+    90deg,
+    var(--palette-brand-blue),
+    color-mix(in srgb, var(--palette-brand-blue) 35%, #ffffff) 55%,
+    transparent
+  );
+  --dash-surface-gradient: linear-gradient(
+    165deg,
+    color-mix(in srgb, #ffffff 90%, var(--color-surface)) 0%,
+    var(--color-surface) 48%
+  );
+  --dash-canvas-glow: radial-gradient(
+    ellipse 90% 60% at 8% -10%,
+    color-mix(in srgb, var(--palette-brand-blue) 10%, transparent),
+    transparent 58%
+  );
+  --dash-sidebar-glass: color-mix(in srgb, var(--color-surface) 94%, transparent);
 }

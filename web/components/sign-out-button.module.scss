@@ -23,8 +23,23 @@
     background: var(--color-accent-interactive);
     color: var(--color-hover-fg);
   }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+  }
 }
 
 .icon {
   flex-shrink: 0;
+}
+
+@media (max-width: 52rem) {
+  .button {
+    padding: var(--space-5);
+
+    span {
+      display: none;
+    }
+  }
 }

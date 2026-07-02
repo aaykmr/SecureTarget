@@ -5,7 +5,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className={styles.shell}>
       <DashboardSidebar />
-      <main className={styles.content}>{children}</main>
+      <main className={styles.content}>
+        <div className={styles.contentInner}>{children}</div>
+      </main>
     </div>
   );
 }

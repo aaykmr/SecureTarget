@@ -9,11 +9,6 @@
   flex-wrap: wrap;
   align-items: flex-end;
   gap: var(--space-5);
-
-  /* Override shared Button primary pill — this form only */
-  button {
-    border-radius: var(--radius-md);
-  }
 }
 
 .error {

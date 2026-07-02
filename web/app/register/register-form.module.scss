@@ -19,16 +19,3 @@
   line-height: 1.5;
   color: var(--color-accent-error);
 }
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  min-width: 0;
-  font-size: var(--text-body);
-  line-height: 1.5;
-}
-
-.label {
-  color: var(--color-fg-muted);
-}

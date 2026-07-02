@@ -58,6 +58,15 @@ The Web SDK is bundled into a static file served by the dashboard:
 
 The file is generated before `next dev` / `next build` via `npm run build:sdk-browser` (wired as `predev` / `prebuild` on the `web` workspace). Customer sites can load it with a `<script src="…/sdk.js">` tag; see the project page in the dashboard for a copy-paste example.
 
+### Mobile SDK downloads (`/downloads/*.zip`)
+
+iOS and Android source SDKs are packaged as zip files served by the dashboard:
+
+- **iOS:** `/downloads/securetarget-ios-sdk.zip`
+- **Android:** `/downloads/securetarget-android-sdk.zip`
+
+Regenerate with `npm run build:sdk-zips` from the repo root (also runs on `web` predev/prebuild). Each archive includes source files and a short README.
+
 Browser calls to the ingest API require CORS. The ingest server sets `Access-Control-Allow-Origin` from `CORS_ORIGIN` (default `*` for development).
 
 ### Debugging “Invalid or revoked API key”

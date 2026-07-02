@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { auth } from "@/auth";
+import { DashboardPageHeader } from "@/components/dashboard/page-header";
 import { getDb } from "@/lib/db";
 import { getProjectForUser, listTrackingLinksForCompany } from "@/lib/repos";
 import { LinksManager } from "./links-manager";
@@ -20,15 +20,19 @@ export default async function LinksPage({ params }: { params: Promise<{ projectI
   const ingestBaseUrl = process.env.NEXT_PUBLIC_INGEST_URL ?? "http://localhost:8080";
 
   return (
-    <div>
-      <Link href={`/dashboard/${projectId}`} className={styles.backLink}>
-        ← Back to project
-      </Link>
-      <LinksManager
-        projectId={projectId}
-        links={links}
-        ingestBaseUrl={ingestBaseUrl}
+    <div className={styles.root}>
+      <DashboardPageHeader
+        backHref={`/dashboard/${projectId}`}
+        backLabel="Get started"
+        eyebrow="Campaigns"
+        title="Campaign links"
+        description={
+          <p>
+            OneLink-style URLs that record clicks before redirecting to App Store, Play Store, or your web landing page.
+          </p>
+        }
       />
+      <LinksManager projectId={projectId} links={links} ingestBaseUrl={ingestBaseUrl} />
     </div>
   );
 }

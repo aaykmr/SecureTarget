@@ -12,7 +12,8 @@
     "test": "tsx --test backend/test/**/*.test.ts",
     "dev:web": "npm run dev --workspace web",
     "dev:ingest": "npm run start --workspace @securetarget/backend",
-    "build:sdk-browser": "npm run build:browser --workspace @securetarget/web-sdk"
+    "build:sdk-browser": "npm run build:browser --workspace @securetarget/web-sdk",
+    "build:sdk-zips": "node scripts/build-sdk-zips.mjs"
   },
   "devDependencies": {
     "tsx": "^4.20.6",

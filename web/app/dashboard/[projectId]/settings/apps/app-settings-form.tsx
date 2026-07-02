@@ -2,6 +2,9 @@
 
 import { useActionState } from "react";
 import { saveAppSettingsAction } from "@/app/dashboard/campaign-actions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import styles from "../../campaigns/page.module.scss";
 
 export function AppSettingsForm({
@@ -34,32 +37,29 @@ export function AppSettingsForm({
   return (
     <form action={formAction} className={styles.form}>
       <input type="hidden" name="projectId" value={projectId} />
-      <h2 className={styles.sectionTitle}>iOS</h2>
+      <h3 className={styles.sectionTitle}>iOS</h3>
       <div className={styles.formRow}>
-        <label>
-          Bundle ID (ios_app_id)
-          <input name="iosAppId" defaultValue={settings?.ios_app_id ?? ""} />
-        </label>
-        <label>
-          Team ID
-          <input name="iosTeamId" defaultValue={settings?.ios_team_id ?? ""} />
-        </label>
+        <Input name="iosAppId" label="Bundle ID (ios_app_id)" defaultValue={settings?.ios_app_id ?? ""} mono />
+        <Input name="iosTeamId" label="Team ID" defaultValue={settings?.ios_team_id ?? ""} mono />
       </div>
-      <h2 className={styles.sectionTitle}>Android</h2>
-      <label>
-        Package name
-        <input name="androidPackage" defaultValue={settings?.android_package ?? ""} />
-      </label>
-      <label>
-        SHA256 cert fingerprints (one per line)
-        <textarea name="androidSha256Certs" rows={3} defaultValue={certs} />
-      </label>
-      <h2 className={styles.sectionTitle}>Deep linking</h2>
-      <label>
-        Associated domain
-        <input name="associatedDomain" defaultValue={settings?.associated_domain ?? ""} placeholder="go.example.com" />
-      </label>
-      <p className={styles.lead}>
+      <h3 className={styles.sectionTitle}>Android</h3>
+      <Input name="androidPackage" label="Package name" defaultValue={settings?.android_package ?? ""} mono />
+      <Textarea
+        name="androidSha256Certs"
+        label="SHA256 cert fingerprints (one per line)"
+        rows={3}
+        defaultValue={certs}
+        mono
+      />
+      <h3 className={styles.sectionTitle}>Deep linking</h3>
+      <Input
+        name="associatedDomain"
+        label="Associated domain"
+        defaultValue={settings?.associated_domain ?? ""}
+        placeholder="go.example.com"
+        mono
+      />
+      <p className={styles.codeNote}>
         Universal Links:{" "}
         <code>
           {ingestBaseUrl}/.well-known/apple-app-site-association/{companyId}
@@ -70,16 +70,14 @@ export function AppSettingsForm({
           {ingestBaseUrl}/.well-known/assetlinks.json/{companyId}
         </code>
       </p>
-      <h2 className={styles.sectionTitle}>Attribution</h2>
-      <label>
-        Install attribution window (hours)
-        <input
-          name="installWindowHours"
-          type="number"
-          min={1}
-          defaultValue={settings?.install_attribution_window_hours ?? 24}
-        />
-      </label>
+      <h3 className={styles.sectionTitle}>Attribution</h3>
+      <Input
+        name="installWindowHours"
+        type="number"
+        label="Install attribution window (hours)"
+        min={1}
+        defaultValue={settings?.install_attribution_window_hours ?? 24}
+      />
       <label className={styles.checkbox}>
         <input
           name="enableProbabilistic"
@@ -88,21 +86,16 @@ export function AppSettingsForm({
         />
         Enable probabilistic IP matching
       </label>
-      <label>
-        Partner postback URL template
-        <input
-          name="partnerPostbackUrl"
-          defaultValue={settings?.partner_postback_url ?? ""}
-          placeholder="https://partner.com/postback?click_id={click_id}&campaign={campaign_id}"
-        />
-      </label>
-      <label>
-        SKAdNetwork IDs (one per line)
-        <textarea name="skanIds" rows={3} defaultValue={skanIds} />
-      </label>
-      <button type="submit" disabled={pending}>
+      <Input
+        name="partnerPostbackUrl"
+        label="Partner postback URL template"
+        defaultValue={settings?.partner_postback_url ?? ""}
+        placeholder="https://partner.com/postback?click_id={click_id}&campaign={campaign_id}"
+      />
+      <Textarea name="skanIds" label="SKAdNetwork IDs (one per line)" rows={3} defaultValue={skanIds} mono />
+      <Button type="submit" disabled={pending} size="sm" alignSelfStart>
         {pending ? "Saving…" : "Save settings"}
-      </button>
+      </Button>
       {state?.ok === false ? <p className={styles.error}>{state.error}</p> : null}
       {state?.ok ? <p className={styles.success}>Settings saved.</p> : null}
     </form>

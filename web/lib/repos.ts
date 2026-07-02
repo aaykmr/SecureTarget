@@ -69,6 +69,20 @@ export function listApiKeysForProject(db: Database, projectId: string): ApiKeyRo
     .all(projectId) as ApiKeyRow[];
 }
 
+export function revokeActiveApiKeysForProject(db: Database, projectId: string): number {
+  const res = db
+    .prepare(`UPDATE api_keys SET revoked_at = datetime('now') WHERE project_id = ? AND revoked_at IS NULL`)
+    .run(projectId);
+  return res.changes;
+}
+
+export function projectHasActiveApiKey(db: Database, projectId: string): boolean {
+  const row = db
+    .prepare(`SELECT 1 AS ok FROM api_keys WHERE project_id = ? AND revoked_at IS NULL LIMIT 1`)
+    .get(projectId) as { ok: number } | undefined;
+  return Boolean(row);
+}
+
 export function createApiKeyForProject(db: Database, projectId: string): { fullKey: string; row: ApiKeyRow } {
   const { fullKey, prefix } = generateApiKey();
   const id = crypto.randomUUID();
@@ -88,7 +102,18 @@ export function createApiKeyForProject(db: Database, projectId: string): { fullK
       hashPrefix: `${keyHash.slice(0, 16)}…`
     });
   }
-  db.prepare(`INSERT INTO api_keys (id, project_id, key_prefix, key_hash) VALUES (?, ?, ?, ?)`).run(id, projectId, prefix, keyHash);
+
+  const insert = db.transaction(() => {
+    revokeActiveApiKeysForProject(db, projectId);
+    db.prepare(`INSERT INTO api_keys (id, project_id, key_prefix, key_hash) VALUES (?, ?, ?, ?)`).run(
+      id,
+      projectId,
+      prefix,
+      keyHash
+    );
+  });
+  insert();
+
   const row = db.prepare(`SELECT id, project_id, key_prefix, created_at, revoked_at FROM api_keys WHERE id = ?`).get(id) as ApiKeyRow;
   return { fullKey, row };
 }
@@ -266,6 +291,7 @@ export interface TrackingLinkRow {
   android_url: string | null;
   web_url: string | null;
   default_params_json: string | null;
+  campaign_presets_json: string | null;
   created_at: string;
 }
 
@@ -307,6 +333,28 @@ export function createTrackingLink(
 
 export function deleteTrackingLinkForCompany(db: Database, companyId: string, linkId: string): boolean {
   const res = db.prepare(`DELETE FROM tracking_links WHERE id = ? AND company_id = ?`).run(linkId, companyId);
+  return res.changes > 0;
+}
+
+export function getTrackingLinkForCompany(
+  db: Database,
+  companyId: string,
+  linkId: string,
+): TrackingLinkRow | undefined {
+  return db
+    .prepare(`SELECT * FROM tracking_links WHERE id = ? AND company_id = ?`)
+    .get(linkId, companyId) as TrackingLinkRow | undefined;
+}
+
+export function updateTrackingLinkCampaignPresets(
+  db: Database,
+  companyId: string,
+  linkId: string,
+  presetsJson: string,
+): boolean {
+  const res = db
+    .prepare(`UPDATE tracking_links SET campaign_presets_json = ? WHERE id = ? AND company_id = ?`)
+    .run(presetsJson, linkId, companyId);
   return res.changes > 0;
 }
 

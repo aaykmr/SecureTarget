@@ -1,6 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
+import { DashboardPageHeader } from "@/components/dashboard/page-header";
+import { DashboardPanel } from "@/components/dashboard/panel";
 import { getDb } from "@/lib/db";
 import { getAttributionSettingsRow, getProjectForUser } from "@/lib/repos";
 import { AppSettingsForm } from "./app-settings-form";
@@ -21,17 +22,23 @@ export default async function AppSettingsPage({ params }: { params: Promise<{ pr
 
   return (
     <div className={styles.root}>
-      <Link href={`/dashboard/${projectId}`} className={styles.backLink}>
-        ← Back to project
-      </Link>
-      <h1 className={styles.title}>App settings</h1>
-      <p className={styles.lead}>Configure Universal Links, App Links, SKAN IDs, and attribution windows.</p>
-      <AppSettingsForm
-        projectId={projectId}
-        companyId={project.company_id}
-        ingestBaseUrl={ingestBaseUrl}
-        settings={settings}
+      <DashboardPageHeader
+        backHref={`/dashboard/${projectId}`}
+        backLabel="Get started"
+        eyebrow="Configuration"
+        title="App settings"
+        description={
+          <p>Configure Universal Links, App Links, SKAN IDs, and attribution windows for this project.</p>
+        }
       />
+      <DashboardPanel>
+        <AppSettingsForm
+          projectId={projectId}
+          companyId={project.company_id}
+          ingestBaseUrl={ingestBaseUrl}
+          settings={settings}
+        />
+      </DashboardPanel>
     </div>
   );
 }

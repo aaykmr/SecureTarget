@@ -1,12 +1,15 @@
 "use client";
 
-import { Cancel01Icon } from "@hugeicons/core-free-icons";
+import { Cancel01Icon, Copy01Icon } from "@hugeicons/core-free-icons";
 import clsx from "clsx";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "react-toastify";
 import { fetchSdkEventsAction } from "@/app/dashboard/actions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { HugeIcon } from "@/components/huge-icon";
 import type { SdkEventRow } from "@/lib/repos";
 import styles from "./events-explorer.module.scss";
@@ -120,46 +123,30 @@ function formatPayloadPretty(json: string): string {
   }
 }
 
-function CopyableDd({
-  label,
-  copyText,
-  className,
-  children,
-}: {
-  /** Short label for the toast, e.g. "Event id" */
-  label: string;
-  copyText: string;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  const copy = useCallback(
-    async (e: React.MouseEvent | React.KeyboardEvent) => {
-      e.stopPropagation();
-      try {
-        await navigator.clipboard.writeText(copyText);
-        toast.success(`Copied ${label}`);
-      } catch {
-        toast.error("Could not copy");
-      }
-    },
-    [copyText, label],
-  );
+function DetailCopyButton({ label, copyText }: { label: string; copyText: string }) {
+  const disabled = !copyText.trim() || copyText === "—";
+
+  const copy = useCallback(async () => {
+    if (disabled) return;
+    try {
+      await navigator.clipboard.writeText(copyText);
+      toast.success(`Copied ${label}`);
+    } catch {
+      toast.error("Could not copy");
+    }
+  }, [copyText, disabled, label]);
 
   return (
-    <dd
-      role="button"
-      tabIndex={0}
-      className={clsx(styles.ddInteractive, className)}
-      onClick={(e) => void copy(e)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          void copy(e);
-        }
-      }}
+    <button
+      type="button"
+      className={styles.copyBtn}
+      onClick={() => void copy()}
+      disabled={disabled}
+      aria-label={`Copy ${label}`}
+      title={`Copy ${label}`}
     >
-      {children}
-    </dd>
+      <HugeIcon icon={Copy01Icon} size={16} className={styles.copyBtnIcon} />
+    </button>
   );
 }
 
@@ -287,14 +274,11 @@ function EventDetailPanel({
           <dl className={styles.dl}>
             {detailFields.map((field) => (
               <div key={field.key} className={field.rowClassName}>
-                <dt className={styles.dt}>{field.dt}</dt>
-                <CopyableDd
-                  label={field.copyLabel}
-                  copyText={field.copyText}
-                  className={field.ddClassName}
-                >
-                  {field.content}
-                </CopyableDd>
+                <div className={styles.detailRowHeader}>
+                  <dt className={styles.dt}>{field.dt}</dt>
+                  <DetailCopyButton label={field.copyLabel} copyText={field.copyText} />
+                </div>
+                <dd className={field.ddClassName}>{field.content}</dd>
               </div>
             ))}
           </dl>
@@ -475,62 +459,55 @@ export function EventsExplorer({
               Session id (same opaque token as JSON <code className={styles.codeInline}>token</code> on{" "}
               <code className={styles.codeInline}>/v1/record</code>)
             </label>
-            <input
+            <Input
               id="token-filter"
               name="token"
               type="password"
               autoComplete="off"
               value={tokenInput}
-              onChange={(e) => setTokenInput(e.target.value)}
+              onValueChange={setTokenInput}
               placeholder="Optional — paste sess_… id"
-              className={styles.inputPassword}
+              mono
+              size="mediumSmall"
             />
           </div>
 
           <div className={styles.filtersDivider} aria-hidden />
 
           <div className={styles.grid2}>
-            <div>
-              <label htmlFor="action-type-filter" className={styles.label}>
-                Action type
-              </label>
-              <select
-                id="action-type-filter"
-                value={actionTypeFilter}
-                onChange={(e) => setActionTypeFilter(e.target.value)}
-                className={styles.selectInput}
-              >
-                <option value="">All</option>
-                {ACTION_TYPE_OPTIONS.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="event-label-filter" className={styles.label}>
-                Event (payload)
-              </label>
-              <input
-                id="event-label-filter"
-                type="search"
-                value={eventLabelFilter}
-                onChange={(e) => setEventLabelFilter(e.target.value)}
-                placeholder="Matches conversionName or eventType in JSON"
-                autoComplete="off"
-                className={styles.searchInput}
-              />
-            </div>
+            <Select
+              id="action-type-filter"
+              label="Action type"
+              value={actionTypeFilter}
+              onChange={(e) => setActionTypeFilter(e.target.value)}
+              size="mediumSmall"
+            >
+              <option value="">All</option>
+              {ACTION_TYPE_OPTIONS.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </Select>
+            <Input
+              id="event-label-filter"
+              label="Event (payload)"
+              type="search"
+              value={eventLabelFilter}
+              onValueChange={setEventLabelFilter}
+              placeholder="Matches conversionName or eventType in JSON"
+              autoComplete="off"
+              size="mediumSmall"
+            />
           </div>
 
           <div className={styles.filterActions}>
-            <button type="submit" disabled={pending} className={styles.btnPrimarySm}>
+            <Button type="submit" disabled={pending} size="sm">
               {pending ? "Loading…" : "Apply"}
-            </button>
-            <button type="button" disabled={pending} className={styles.btnGhostSm} onClick={() => clearAllFilters()}>
+            </Button>
+            <Button type="button" disabled={pending} variant="ghost" size="sm" onClick={() => clearAllFilters()}>
               Clear all
-            </button>
+            </Button>
           </div>
 
           <p className={styles.help}>

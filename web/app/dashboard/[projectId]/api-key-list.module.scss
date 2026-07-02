@@ -1,0 +1,123 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.keyList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.keyRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  padding: var(--space-5) var(--space-6);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: color-mix(in srgb, var(--color-canvas) 45%, transparent);
+  transition: border-color 0.15s ease;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--color-accent-interactive) 25%, var(--color-border-subtle));
+  }
+}
+
+.keyRowSubdued {
+  opacity: 0.85;
+}
+
+.keyMeta {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.keyPrefix {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  line-height: 1.35;
+}
+
+.keyPrefixActive {
+  font-size: var(--text-body-sm);
+  color: var(--color-fg-default);
+}
+
+.keyPrefixRevoked {
+  font-size: var(--text-caption-sm);
+  color: var(--color-fg-subtle);
+}
+
+.keySubActive {
+  font-size: var(--text-caption-sm);
+  color: var(--color-fg-muted);
+}
+
+.keySubRevoked {
+  font-size: var(--text-caption-sm);
+  color: var(--color-accent-error);
+}
+
+.emptyKeys {
+  margin: 0;
+  padding: var(--space-7);
+  text-align: center;
+  font-size: var(--text-body-sm);
+  color: var(--color-fg-muted);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--color-border-default);
+}
+
+.rollup {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: color-mix(in srgb, var(--color-canvas) 30%, transparent);
+  overflow: hidden;
+}
+
+.rollupSummary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3) var(--space-5);
+  padding: var(--space-4) var(--space-6);
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  color: var(--color-fg-muted);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  &::before {
+    content: "▸";
+    display: inline-block;
+    width: 1rem;
+    color: var(--color-fg-subtle);
+    transition: transform 0.15s ease;
+  }
+}
+
+.rollup[open] .rollupSummary::before {
+  transform: rotate(90deg);
+}
+
+.rollupHint {
+  font-size: var(--text-caption-sm);
+  font-weight: 400;
+  color: var(--color-fg-subtle);
+}
+
+.rollup .keyList {
+  padding: 0 var(--space-5) var(--space-5);
+}

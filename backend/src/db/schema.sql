@@ -134,8 +134,9 @@ CREATE TABLE IF NOT EXISTS tracking_links (
   ios_url TEXT,
   android_url TEXT,
   web_url TEXT,
-  default_params_json TEXT,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      default_params_json TEXT,
+      campaign_presets_json TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_tracking_links_slug ON tracking_links(company_id, slug);

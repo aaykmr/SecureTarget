@@ -25,14 +25,15 @@ export function RegisterForm() {
     <Card className={styles.card}>
       <form action={formAction} className={styles.form}>
         {!state.ok && state.error && <p className={styles.bannerError}>{state.error}</p>}
-        <label className={styles.field}>
-          <span className={styles.label}>Email</span>
-          <Input name="email" type="email" required autoComplete="email" />
-        </label>
-        <label className={styles.field}>
-          <span className={styles.label}>Password</span>
-          <Input name="password" type="password" required minLength={8} autoComplete="new-password" />
-        </label>
+        <Input name="email" type="email" label="Email" required autoComplete="email" />
+        <Input
+          name="password"
+          type="password"
+          label="Password"
+          required
+          minLength={8}
+          autoComplete="new-password"
+        />
         <Button type="submit" disabled={pending} variant="primary" fullWidth>
           {pending ? "Creating account…" : "Create account"}
         </Button>

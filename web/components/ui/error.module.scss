@@ -1,0 +1,13 @@
+.root {
+  margin: 0;
+  color: var(--color-accent-error);
+  line-height: 1.4;
+}
+
+.small {
+  font-size: var(--text-caption);
+}
+
+.large {
+  font-size: var(--text-body-sm);
+}

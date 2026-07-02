@@ -97,24 +97,26 @@ export function LandingPage() {
       <div className={styles.glowSecondary} aria-hidden />
 
       <header className={styles.header}>
-        <Link href="/" className={styles.logo}>
-          <HugeIcon icon={Shield01Icon} size={22} className={styles.logoIcon} />
-          SecureTarget
-        </Link>
-        <nav className={styles.headerNav}>
-          <a href="#features" className={styles.headerLink}>
-            Features
-          </a>
-          <a href="#how-it-works" className={styles.headerLink}>
-            How it works
-          </a>
-          <Link href="/login" className={styles.headerLink}>
-            Sign in
+        <div className={styles.headerInner}>
+          <Link href="/" className={styles.logo}>
+            <HugeIcon icon={Shield01Icon} size={22} className={styles.logoIcon} />
+            SecureTarget
           </Link>
-          <Link href="/register" className={styles.btnHeader}>
-            Get started
-          </Link>
-        </nav>
+          <nav className={styles.headerNav}>
+            <a href="#features" className={styles.headerLink}>
+              Features
+            </a>
+            <a href="#how-it-works" className={styles.headerLink}>
+              How it works
+            </a>
+            <Link href="/login" className={styles.headerLink}>
+              Sign in
+            </Link>
+            <Link href="/register" className={styles.btnHeader}>
+              Get started
+            </Link>
+          </nav>
+        </div>
       </header>
 
       <main className={styles.main}>

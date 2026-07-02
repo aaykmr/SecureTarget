@@ -1,14 +1,31 @@
+import {
+  Activity01Icon,
+  Analytics01Icon,
+  Link01Icon,
+  Megaphone01Icon,
+  SettingsIcon,
+} from "@hugeicons/core-free-icons";
 import { isCashfreeBillingEnforced } from "@securetarget/shared";
-import clsx from "clsx";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
+import { DashboardPageHeader } from "@/components/dashboard/page-header";
+import { DashboardPanel } from "@/components/dashboard/panel";
+import { HugeIcon } from "@/components/huge-icon";
 import { getDb } from "@/lib/db";
-import { getBillingSubscription, getProjectForUser, listApiKeysForProject, userBillingAllowsProductUsage } from "@/lib/repos";
+import { getBillingSubscription, getProjectForUser, listApiKeysForProject, projectHasActiveApiKey, userBillingAllowsProductUsage } from "@/lib/repos";
+import { ApiKeyList } from "./api-key-list";
 import { CreateApiKeyForm } from "./create-key-form";
 import { IntegrationSnippets } from "./integration-snippets";
-import { RevokeKeyForm } from "./revoke-key-form";
 import styles from "./page.module.scss";
+
+const QUICK_LINKS = [
+  { href: "campaigns", label: "Campaigns", icon: Megaphone01Icon },
+  { href: "attribution", label: "Attribution", icon: Analytics01Icon },
+  { href: "links", label: "Links", icon: Link01Icon },
+  { href: "events", label: "Events", icon: Activity01Icon },
+  { href: "settings/apps", label: "Settings", icon: SettingsIcon },
+] as const;
 
 export default async function ProjectPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
@@ -23,90 +40,66 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
     notFound();
   }
   const keys = listApiKeysForProject(db, projectId);
+  const hasActiveKey = projectHasActiveApiKey(db, projectId);
   const billingLocked = isCashfreeBillingEnforced() && !userBillingAllowsProductUsage(db, userId);
   const billing = getBillingSubscription(db, userId);
 
   return (
     <div className={styles.root}>
-      <div>
-        <Link href="/dashboard" className={styles.backLink}>
-          ← Back to projects
-        </Link>
-        <h1 className={styles.title}>{project.name}</h1>
-        <p className={styles.companyLine}>companyId: {project.company_id}</p>
-        <p className={styles.eventsLinkWrap}>
-          <Link href={`/dashboard/${project.id}/campaigns`} className={styles.eventsLink}>
-            Campaign performance →
-          </Link>
-          {" · "}
-          <Link href={`/dashboard/${project.id}/links`} className={styles.eventsLink}>
-            Tracking links →
-          </Link>
-          {" · "}
-          <Link href={`/dashboard/${project.id}/events`} className={styles.eventsLink}>
-            Events →
-          </Link>
-        </p>
-        {billingLocked ? (
-          <p className={styles.billingHint}>
-            Cashfree billing is required. Complete an active subscription from the{" "}
-            <Link href="/dashboard" className={styles.billingHintLink}>
-              dashboard home
-            </Link>
-            {billing ? ` (current status: ${billing.status}).` : "."}
-          </p>
-        ) : null}
-      </div>
+      <DashboardPageHeader
+        backHref="/dashboard"
+        backLabel="Projects"
+        eyebrow="Get started"
+        title={project.name}
+        description={<p className={styles.companyLine}>companyId: {project.company_id}</p>}
+      />
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>API keys</h2>
-        <p className={styles.sectionLead}>
-          Use the key in the <code className={styles.inlineCode}>x-api-key</code> header. The ingest server maps it to this project&apos;s{" "}
-          <code className={styles.inlineCode}>companyId</code>.
+      <nav className={styles.quickNav} aria-label="Project sections">
+        {QUICK_LINKS.map((item) => (
+          <Link key={item.href} href={`/dashboard/${project.id}/${item.href}`} className={styles.quickLink}>
+            <HugeIcon icon={item.icon} size={16} className={styles.quickIcon} />
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+
+      {billingLocked ? (
+        <p className={styles.billingHint}>
+          Cashfree billing is required. Complete an active subscription from the{" "}
+          <Link href="/dashboard" className={styles.billingHintLink}>
+            dashboard home
+          </Link>
+          {billing ? ` (current status: ${billing.status}).` : "."}
         </p>
+      ) : null}
+
+      <DashboardPanel
+        title="API keys"
+        lead={
+          <>
+            One active key per project. Use the key in the <code>x-api-key</code> header; the ingest server maps it to this
+            project&apos;s <code>companyId</code>. Rotating revokes the previous key.
+          </>
+        }
+      >
         <div className={styles.formSlot}>
-          <CreateApiKeyForm projectId={project.id} disabled={billingLocked} />
+          <CreateApiKeyForm projectId={project.id} disabled={billingLocked} hasActiveKey={hasActiveKey} />
         </div>
-        <ul className={styles.keyList}>
-          {keys.length === 0 ? (
-            <li className={styles.emptyKeys}>No keys yet.</li>
-          ) : (
-            keys.map((k) => (
-              <li key={k.id} className={styles.keyRow}>
-                <div className={styles.keyMeta}>
-                  <span
-                    className={clsx(
-                      styles.keyPrefix,
-                      k.revoked_at ? styles.keyPrefixRevoked : styles.keyPrefixActive,
-                    )}
-                  >
-                    {k.key_prefix}…
-                  </span>
-                  <span
-                    className={clsx(
-                      styles.keySub,
-                      k.revoked_at ? styles.keySubRevoked : styles.keySubActive,
-                    )}
-                  >
-                    {k.revoked_at ? `Revoked ${k.revoked_at}` : `Created ${k.created_at}`}
-                  </span>
-                </div>
-                {!k.revoked_at ? <RevokeKeyForm projectId={project.id} keyId={k.id} /> : null}
-              </li>
-            ))
-          )}
-        </ul>
-      </section>
+        <ApiKeyList keys={keys} projectId={project.id} />
+      </DashboardPanel>
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Integration</h2>
-        <p className={styles.sectionLead}>
-          Point the Web SDK at your ingest server. Set <code className={styles.inlineCode}>NEXT_PUBLIC_INGEST_URL</code> in this app to match where you run the backend.
-        </p>
-        <div className={styles.integrationSlot}>
-          <IntegrationSnippets companyId={project.company_id} />
-        </div>
-      </section>
+      <DashboardPanel
+        title="Integration"
+        lead={
+          <>
+            Step-by-step setup for Web, iOS, and Android. Use your API key, <code>companyId</code>, and ingest URL below.
+            Set <code>NEXT_PUBLIC_INGEST_URL</code> and <code>NEXT_PUBLIC_APP_URL</code> in this app&apos;s{" "}
+            <code>.env</code> so snippets match your environment.
+          </>
+        }
+      >
+        <IntegrationSnippets companyId={project.company_id} projectId={project.id} />
+      </DashboardPanel>
     </div>
   );
 }

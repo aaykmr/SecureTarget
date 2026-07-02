@@ -1,6 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
+import { DataTable, DataTableEmpty } from "@/components/dashboard/data-table";
+import { DashboardPageHeader } from "@/components/dashboard/page-header";
 import { getDb } from "@/lib/db";
 import { getDeviceDb } from "@/lib/deviceDb";
 import { getProjectForUser, listSkanPostbacks } from "@/lib/repos";
@@ -26,16 +27,19 @@ export default async function SkanPage({ params }: { params: Promise<{ projectId
 
   return (
     <div className={styles.root}>
-      <Link href={`/dashboard/${projectId}`} className={styles.backLink}>
-        ← Back to project
-      </Link>
-      <h1 className={styles.title}>SKAdNetwork postbacks</h1>
-      <p className={styles.lead}>
-        Aggregate iOS privacy channel data. Post to{" "}
-        <code>POST /v1/skan/postback</code> with your API key.
-      </p>
+      <DashboardPageHeader
+        backHref={`/dashboard/${projectId}`}
+        backLabel="Get started"
+        eyebrow="iOS privacy"
+        title="SKAdNetwork postbacks"
+        description={
+          <p>
+            Aggregate iOS privacy channel data. Post to <code>POST /v1/skan/postback</code> with your API key.
+          </p>
+        }
+      />
 
-      <table className={styles.table}>
+      <DataTable caption="SKAdNetwork postbacks">
         <thead>
           <tr>
             <th>Received</th>
@@ -47,11 +51,7 @@ export default async function SkanPage({ params }: { params: Promise<{ projectId
         </thead>
         <tbody>
           {rows.length === 0 ? (
-            <tr>
-              <td colSpan={5} className={styles.empty}>
-                No SKAN postbacks yet.
-              </td>
-            </tr>
+            <DataTableEmpty colSpan={5}>No SKAN postbacks yet.</DataTableEmpty>
           ) : (
             rows.map((row) => (
               <tr key={row.id}>
@@ -64,7 +64,7 @@ export default async function SkanPage({ params }: { params: Promise<{ projectId
             ))
           )}
         </tbody>
-      </table>
+      </DataTable>
     </div>
   );
 }

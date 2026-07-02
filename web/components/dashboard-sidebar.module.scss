@@ -1,19 +1,20 @@
 .sidebar {
   display: flex;
-  width: 14rem;
+  width: 15rem;
   height: 100vh;
   max-height: 100vh;
   flex-shrink: 0;
   flex-direction: column;
   overflow: hidden;
-  border-right: 1px solid var(--color-nav-border);
-  background: var(--color-surface);
+  border-right: 1px solid color-mix(in srgb, var(--color-nav-border) 80%, transparent);
+  background: var(--dash-sidebar-glass);
+  backdrop-filter: blur(14px);
 }
 
 .brandBlock {
   flex-shrink: 0;
-  border-bottom: 1px solid var(--color-nav-border);
-  padding: var(--space-7) var(--space-7);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-nav-border) 70%, transparent);
+  padding: var(--space-8) var(--space-7);
 }
 
 .brandLink {
@@ -23,68 +24,101 @@
   font-size: var(--text-body);
   line-height: 1.5;
   font-weight: 600;
+  letter-spacing: -0.02em;
   color: var(--color-fg-default);
   text-decoration: none;
+  transition: color 0.15s ease;
 
   &:hover {
-    text-decoration: underline;
+    color: var(--color-accent-interactive);
   }
 }
 
 .brandIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-accent-interactive) 14%, transparent);
   color: var(--color-accent-interactive);
   flex-shrink: 0;
 }
 
 .tagline {
-  margin-top: 2px;
-  font-size: var(--text-caption);
+  margin-top: var(--space-3);
+  font-size: var(--text-caption-sm);
   line-height: 1.35;
-  color: var(--color-fg-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-fg-subtle);
 }
 
 .nav {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-2);
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: var(--space-6);
+  padding: var(--space-6) var(--space-5);
 }
 
 .navLink {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-5);
   flex-shrink: 0;
   border-radius: var(--radius-md);
   padding: var(--space-5) var(--space-6);
-  font-size: var(--text-body);
+  font-size: var(--text-body-sm);
   line-height: 1.5;
   font-weight: 500;
   text-decoration: none;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
   color: var(--color-fg-muted);
 
   &:hover {
-    background: var(--color-surface-elevated);
+    background: color-mix(in srgb, var(--color-surface-elevated) 80%, transparent);
     color: var(--color-fg-default);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
   }
 }
 
 .navIcon {
   flex-shrink: 0;
-  opacity: 0.85;
+  opacity: 0.8;
 }
 
 .navLinkActive {
-  background: var(--color-surface-elevated);
+  background: color-mix(in srgb, var(--color-accent-interactive) 12%, var(--color-surface-elevated));
   color: var(--color-fg-default);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent-interactive) 22%, transparent);
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 60%;
+    border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
+    background: var(--color-accent-interactive);
+  }
 
   &:hover {
-    background: var(--color-surface-elevated);
+    background: color-mix(in srgb, var(--color-accent-interactive) 14%, var(--color-surface-elevated));
     color: var(--color-fg-default);
   }
 }
@@ -99,8 +133,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
-  border-top: 1px solid var(--color-nav-border);
-  padding: var(--space-6) var(--space-7);
+  border-top: 1px solid color-mix(in srgb, var(--color-nav-border) 70%, transparent);
+  padding: var(--space-6) var(--space-7) var(--space-7);
+  background: color-mix(in srgb, var(--color-canvas) 35%, transparent);
 }
 
 .profile {
@@ -108,11 +143,14 @@
   min-width: 0;
   flex-direction: column;
   gap: 2px;
+  padding: var(--space-5) var(--space-6);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface-elevated) 55%, transparent);
 }
 
 .profileName {
   font-size: var(--text-body-sm);
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.4;
   color: var(--color-fg-default);
   overflow: hidden;
@@ -121,7 +159,7 @@
 }
 
 .profileEmail {
-  font-size: var(--text-caption);
+  font-size: var(--text-caption-sm);
   line-height: 1.35;
   color: var(--color-fg-muted);
   overflow: hidden;
@@ -134,4 +172,46 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-5);
+}
+
+/* Icon rail on narrow viewports — labels hide, icons stay tappable */
+@media (max-width: 52rem) {
+  .sidebar {
+    width: 4.25rem;
+  }
+
+  .brandBlock {
+    display: flex;
+    justify-content: center;
+    padding: var(--space-7) var(--space-4);
+  }
+
+  .brandText,
+  .tagline,
+  .profile {
+    display: none;
+  }
+
+  .nav {
+    padding: var(--space-5) var(--space-4);
+  }
+
+  .navLink {
+    justify-content: center;
+    padding: var(--space-5);
+
+    span {
+      display: none;
+    }
+  }
+
+  .footer {
+    padding: var(--space-5) var(--space-4) var(--space-6);
+  }
+
+  .footerActions {
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--space-4);
+  }
 }

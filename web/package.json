@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "prebuild": "npm run build:browser --workspace @securetarget/web-sdk",
-    "predev": "npm run build:browser --workspace @securetarget/web-sdk",
+    "prebuild": "npm run build:browser --workspace @securetarget/web-sdk && node ../scripts/build-sdk-zips.mjs",
+    "predev": "npm run build:browser --workspace @securetarget/web-sdk && node ../scripts/build-sdk-zips.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

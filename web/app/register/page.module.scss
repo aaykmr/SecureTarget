@@ -4,34 +4,67 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-9);
+  gap: var(--space-8);
   background: var(--color-canvas);
+  background-image: var(--dash-canvas-glow);
   padding: var(--space-7);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-5);
+  font-size: var(--text-body-lg);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-fg-default);
+  text-decoration: none;
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: var(--color-accent-interactive);
+  }
+}
+
+.brandIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-accent-interactive) 14%, transparent);
+  color: var(--color-accent-interactive);
+  flex-shrink: 0;
 }
 
 .intro {
   display: flex;
   max-width: 32rem;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-5);
   text-align: center;
 }
 
 .title {
+  margin: 0;
   font-size: var(--text-heading-md);
   line-height: 1.24;
   font-weight: 600;
+  letter-spacing: -0.02em;
   color: var(--color-fg-default);
 }
 
 .subtitle {
+  margin: 0;
   font-size: var(--text-body);
   line-height: 1.5;
   color: var(--color-fg-muted);
 }
 
 .footer {
-  font-size: var(--text-body);
+  margin: 0;
+  font-size: var(--text-body-sm);
   line-height: 1.5;
   color: var(--color-fg-muted);
 }
@@ -39,9 +72,10 @@
 .footerLink {
   font-weight: 500;
   color: var(--color-accent-interactive);
-  text-decoration: underline;
+  text-decoration: none;
+  text-underline-offset: 2px;
 
   &:hover {
-    color: var(--color-fg-default);
+    text-decoration: underline;
   }
 }

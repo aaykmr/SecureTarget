@@ -21,7 +21,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import styles from "./dashboard-sidebar.module.scss";
 
 const PROJECT_NAV: { segment: string; label: string; icon: IconSvgElement }[] = [
-  { segment: "", label: "Overview", icon: DashboardSquare01Icon },
+  { segment: "", label: "Get started", icon: DashboardSquare01Icon },
   { segment: "campaigns", label: "Campaigns", icon: Megaphone01Icon },
   { segment: "attribution", label: "Attribution", icon: Analytics01Icon },
   { segment: "links", label: "Links", icon: Link01Icon },
@@ -62,7 +62,7 @@ export function DashboardSidebar() {
       <div className={styles.brandBlock}>
         <Link href="/dashboard" className={styles.brandLink}>
           <HugeIcon icon={Analytics01Icon} size={20} className={styles.brandIcon} />
-          SecureTarget
+          <span className={styles.brandText}>SecureTarget</span>
         </Link>
         <p className={styles.tagline}>Dashboard</p>
       </div>

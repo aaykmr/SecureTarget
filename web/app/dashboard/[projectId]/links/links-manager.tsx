@@ -2,7 +2,13 @@
 
 import { useActionState } from "react";
 import { createTrackingLinkAction, deleteTrackingLinkAction } from "@/app/dashboard/campaign-actions";
+import { DashboardPanel } from "@/components/dashboard/panel";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { parseCampaignPresets } from "@/lib/tracking-link-presets";
+import { LinkCampaignPresets } from "./link-campaign-presets";
 import styles from "../campaigns/page.module.scss";
+import linkStyles from "./links-manager.module.scss";
 
 export interface LinkRow {
   id: string;
@@ -12,6 +18,7 @@ export interface LinkRow {
   ios_url: string | null;
   android_url: string | null;
   web_url: string | null;
+  campaign_presets_json: string | null;
   created_at: string;
 }
 
@@ -27,73 +34,77 @@ export function LinksManager({
   const [state, formAction, pending] = useActionState(createTrackingLinkAction, undefined);
 
   return (
-    <div className={styles.root}>
-      <h1 className={styles.title}>Campaign links</h1>
-      <p className={styles.lead}>
-        OneLink-style URLs that record clicks before redirecting to App Store, Play Store, or your web landing page.
-      </p>
+    <>
+      <DashboardPanel title="Create link" lead="Slug must be lowercase letters, numbers, and hyphens only.">
+        <form action={formAction} className={styles.form}>
+          <input type="hidden" name="projectId" value={projectId} />
+          <div className={styles.formRow}>
+            <Input name="name" label="Name" required placeholder="Summer launch" />
+            <Input name="slug" label="Slug" required placeholder="summer" pattern="[a-z0-9-]+" mono />
+          </div>
+          <div className={styles.formRow}>
+            <Input
+              name="iosUrl"
+              type="url"
+              label="iOS App Store URL"
+              placeholder="https://apps.apple.com/..."
+            />
+            <Input
+              name="androidUrl"
+              type="url"
+              label="Android Play URL"
+              placeholder="https://play.google.com/store/apps/details?id=..."
+            />
+          </div>
+          <Input
+            name="webUrl"
+            type="url"
+            label="Web landing URL"
+            placeholder="https://yoursite.com/landing"
+          />
+          <Button type="submit" disabled={pending} size="sm" alignSelfStart>
+            {pending ? "Creating…" : "Create link"}
+          </Button>
+          {state?.ok === false ? <p className={styles.error}>{state.error}</p> : null}
+          {state?.ok ? <p className={styles.success}>Link created.</p> : null}
+        </form>
+      </DashboardPanel>
 
-      <form action={formAction} className={styles.form}>
-        <input type="hidden" name="projectId" value={projectId} />
-        <div className={styles.formRow}>
-          <label>
-            Name
-            <input name="name" required placeholder="Summer launch" />
-          </label>
-          <label>
-            Slug
-            <input name="slug" required placeholder="summer" pattern="[a-z0-9-]+" />
-          </label>
-        </div>
-        <div className={styles.formRow}>
-          <label>
-            iOS App Store URL
-            <input name="iosUrl" type="url" placeholder="https://apps.apple.com/..." />
-          </label>
-          <label>
-            Android Play URL
-            <input name="androidUrl" type="url" placeholder="https://play.google.com/store/apps/details?id=..." />
-          </label>
-        </div>
-        <label>
-          Web landing URL
-          <input name="webUrl" type="url" placeholder="https://yoursite.com/landing" />
-        </label>
-        <button type="submit" disabled={pending}>
-          {pending ? "Creating…" : "Create link"}
-        </button>
-        {state?.ok === false ? <p className={styles.error}>{state.error}</p> : null}
-        {state?.ok ? <p className={styles.success}>Link created.</p> : null}
-      </form>
-
-      <ul className={styles.linkList}>
+      <DashboardPanel
+        title="Active links"
+        lead="Configure campaign URLs per media source. Each preset builds a full tracking link with pid, c, adset, ad, and deep_link_value."
+      >
         {links.length === 0 ? (
-          <li className={styles.empty}>No tracking links yet.</li>
+          <p className={styles.emptyList}>No tracking links yet.</p>
         ) : (
-          links.map((link) => {
-            const trackingUrl = `${ingestBaseUrl.replace(/\/$/, "")}/v1/l/${link.slug}?pid=facebook&c=example`;
-            return (
-              <li key={link.id} className={styles.linkItem}>
-                <div>
-                  <strong>{link.name}</strong> <span className={styles.muted}>({link.slug})</span>
+          <ul className={linkStyles.linkCards}>
+            {links.map((link) => (
+              <li key={link.id} className={linkStyles.linkCard}>
+                <div className={linkStyles.linkCardHeader}>
+                  <div>
+                    <strong className={linkStyles.linkName}>{link.name}</strong>
+                    <span className={styles.muted}> ({link.slug})</span>
+                  </div>
+                  <form action={deleteTrackingLinkAction}>
+                    <input type="hidden" name="projectId" value={projectId} />
+                    <input type="hidden" name="linkId" value={link.id} />
+                    <Button type="submit" variant="danger" size="sm">
+                      Delete link
+                    </Button>
+                  </form>
                 </div>
-                <code className={styles.url}>{trackingUrl}</code>
-                <form action={deleteTrackingLinkAction}>
-                  <input type="hidden" name="projectId" value={projectId} />
-                  <input type="hidden" name="linkId" value={link.id} />
-                  <button type="submit" className={styles.dangerBtn}>
-                    Delete
-                  </button>
-                </form>
+                <LinkCampaignPresets
+                  projectId={projectId}
+                  linkId={link.id}
+                  slug={link.slug}
+                  ingestBaseUrl={ingestBaseUrl}
+                  presets={parseCampaignPresets(link.campaign_presets_json)}
+                />
               </li>
-            );
-          })
+            ))}
+          </ul>
         )}
-      </ul>
-      <p className={styles.lead}>
-        Append query params: <code>pid</code> (media source), <code>c</code> (campaign), <code>adset</code>, <code>ad</code>,{" "}
-        <code>deep_link_value</code>. AppsFlyer aliases <code>af_adset</code> / <code>af_ad</code> are supported.
-      </p>
-    </div>
+      </DashboardPanel>
+    </>
   );
 }

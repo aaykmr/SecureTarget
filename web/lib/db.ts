@@ -57,6 +57,7 @@ function migrateInstallAttributionTables(db: Database.Database): void {
       android_url TEXT,
       web_url TEXT,
       default_params_json TEXT,
+      campaign_presets_json TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
     CREATE UNIQUE INDEX IF NOT EXISTS idx_tracking_links_slug ON tracking_links(company_id, slug);
@@ -84,5 +85,9 @@ function migrateInstallAttributionTables(db: Database.Database): void {
   }
   if (!names.has("is_organic")) {
     db.exec(`ALTER TABLE attribution_events ADD COLUMN is_organic INTEGER`);
+  }
+  const linkCols = db.prepare(`PRAGMA table_info(tracking_links)`).all() as { name: string }[];
+  if (!linkCols.some((c) => c.name === "campaign_presets_json")) {
+    db.exec(`ALTER TABLE tracking_links ADD COLUMN campaign_presets_json TEXT`);
   }
 }

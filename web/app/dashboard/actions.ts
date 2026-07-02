@@ -15,6 +15,7 @@ import {
   findUserByEmail,
   getProjectForUser,
   listSdkEventsForCompany,
+  projectHasActiveApiKey,
   revokeApiKey,
   upsertBillingCheckoutSession,
   userBillingAllowsProductUsage,
@@ -80,10 +81,17 @@ export async function createApiKeyAction(_prev: ActionResult | undefined, formDa
       error: "An active Cashfree subscription is required to generate API keys. Complete billing on the dashboard.",
     };
   }
+  const hadActiveKey = projectHasActiveApiKey(db, projectId);
   const { fullKey } = createApiKeyForProject(db, projectId);
   revalidatePath(`/dashboard/${projectId}`);
   revalidatePath("/dashboard");
-  return { ok: true, apiKey: fullKey, message: "Save this key now. It will not be shown again." };
+  return {
+    ok: true,
+    apiKey: fullKey,
+    message: hadActiveKey
+      ? "Previous key revoked. Save this new key now — it will not be shown again."
+      : "Save this key now. It will not be shown again.",
+  };
 }
 
 export async function revokeApiKeyAction(formData: FormData): Promise<void> {

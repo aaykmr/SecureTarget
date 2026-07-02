@@ -158,17 +158,22 @@
   left: 0;
   right: 0;
   z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  width: 100%;
   height: var(--lp-header-h);
-  max-width: 72rem;
-  margin: 0 auto;
-  padding: 0 var(--gutter-page);
   background: color-mix(in srgb, var(--lp-bg) 85%, transparent);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid color-mix(in srgb, var(--lp-border) 60%, transparent);
   animation: fadeIn 0.6s ease both;
+}
+
+.headerInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 0 var(--gutter-page);
 }
 
 .logo {

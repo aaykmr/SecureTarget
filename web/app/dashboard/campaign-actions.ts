@@ -1,5 +1,6 @@
 "use server";
 
+import crypto from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { getDb } from "@/lib/db";
@@ -7,8 +8,15 @@ import {
   createTrackingLink,
   deleteTrackingLinkForCompany,
   getProjectForUser,
+  getTrackingLinkForCompany,
+  updateTrackingLinkCampaignPresets,
   upsertAttributionSettingsRow,
 } from "@/lib/repos";
+import {
+  parseCampaignPresets,
+  type CampaignPresetInput,
+  type LinkCampaignPreset,
+} from "@/lib/tracking-link-presets";
 
 export type CampaignActionResult = { ok: true } | { ok: false; error: string };
 
@@ -59,6 +67,75 @@ export async function deleteTrackingLinkAction(formData: FormData): Promise<void
   if (!project) return;
 
   deleteTrackingLinkForCompany(db, project.company_id, linkId);
+  revalidatePath(`/dashboard/${projectId}/links`);
+}
+
+function readPresetInput(formData: FormData): CampaignPresetInput | { error: string } {
+  const label = String(formData.get("label") ?? "").trim();
+  const mediaSource = String(formData.get("mediaSource") ?? "").trim();
+  const campaignId = String(formData.get("campaignId") ?? "").trim();
+  if (!label) return { error: "Preset label is required." };
+  if (!mediaSource) return { error: "Media source (pid) is required." };
+  if (!campaignId) return { error: "Campaign (c) is required." };
+  return {
+    label,
+    mediaSource,
+    campaignId,
+    adgroupId: String(formData.get("adgroupId") ?? "").trim() || undefined,
+    creativeId: String(formData.get("creativeId") ?? "").trim() || undefined,
+    deepLinkValue: String(formData.get("deepLinkValue") ?? "").trim() || undefined,
+  };
+}
+
+export async function addLinkCampaignPresetAction(
+  _prev: CampaignActionResult | undefined,
+  formData: FormData,
+): Promise<CampaignActionResult> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, error: "Unauthorized." };
+
+  const projectId = String(formData.get("projectId") ?? "").trim();
+  const linkId = String(formData.get("linkId") ?? "").trim();
+  if (!projectId || !linkId) return { ok: false, error: "Missing project or link." };
+
+  const input = readPresetInput(formData);
+  if ("error" in input) return { ok: false, error: input.error };
+
+  const db = getDb();
+  const project = getProjectForUser(db, projectId, session.user.id);
+  if (!project) return { ok: false, error: "Project not found." };
+
+  const link = getTrackingLinkForCompany(db, project.company_id, linkId);
+  if (!link) return { ok: false, error: "Link not found." };
+
+  const presets = parseCampaignPresets(link.campaign_presets_json);
+  const next: LinkCampaignPreset[] = [
+    ...presets,
+    { id: crypto.randomUUID(), ...input },
+  ];
+  updateTrackingLinkCampaignPresets(db, project.company_id, linkId, JSON.stringify(next));
+  revalidatePath(`/dashboard/${projectId}/links`);
+  return { ok: true };
+}
+
+export async function deleteLinkCampaignPresetAction(formData: FormData): Promise<void> {
+  const session = await auth();
+  if (!session?.user?.id) return;
+
+  const projectId = String(formData.get("projectId") ?? "").trim();
+  const linkId = String(formData.get("linkId") ?? "").trim();
+  const presetId = String(formData.get("presetId") ?? "").trim();
+  if (!projectId || !linkId || !presetId) return;
+
+  const db = getDb();
+  const project = getProjectForUser(db, projectId, session.user.id);
+  if (!project) return;
+
+  const link = getTrackingLinkForCompany(db, project.company_id, linkId);
+  if (!link) return;
+
+  const presets = parseCampaignPresets(link.campaign_presets_json).filter((p) => p.id !== presetId);
+  updateTrackingLinkCampaignPresets(db, project.company_id, linkId, JSON.stringify(presets));
   revalidatePath(`/dashboard/${projectId}/links`);
 }
 

@@ -2,6 +2,8 @@ import { isCashfreeBillingEnforced, isCashfreeSubscriptionStatusActive } from "@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { CashfreeSubscribeButton } from "@/components/cashfree-subscribe-button";
+import { DashboardPageHeader } from "@/components/dashboard/page-header";
+import { DashboardPanel } from "@/components/dashboard/panel";
 import { getDb } from "@/lib/db";
 import { getBillingSubscription, listProjectsForUser } from "@/lib/repos";
 import { CreateProjectForm } from "./create-project-form";
@@ -21,42 +23,42 @@ export default async function DashboardPage() {
 
   return (
     <div className={styles.root}>
+      <DashboardPageHeader
+        eyebrow="Workspace"
+        title="Projects"
+        description={
+          <p>
+            Each project has a <code>companyId</code> used in the SDK. Create an API key on the project overview page.
+          </p>
+        }
+      />
+
       {billingEnforced ? (
-        <section className={styles.billingPanel} aria-label="Subscription">
-          <h2 className={styles.billingTitle}>Subscription (Cashfree)</h2>
-          <p className={styles.billingLead}>
-            Sandbox billing is enforced while <code className={styles.inlineCode}>CASHFREE_CLIENT_ID</code> and{" "}
-            <code className={styles.inlineCode}>CASHFREE_CLIENT_SECRET</code> are set. You need an{" "}
-            <strong>active</strong> subscription to generate API keys and view ingest events. Failed renewals revoke keys
-            and block events until payment succeeds again.
-          </p>
-          <p className={styles.billingStatus}>
-            Status:{" "}
-            <span className={billingActive ? styles.billingOk : styles.billingWarn}>
-              {billing?.status ?? "not started"}
-            </span>
-            {billing?.cf_subscription_id ? (
-              <span className={styles.billingMeta}> · Cashfree id {billing.cf_subscription_id}</span>
-            ) : null}
-          </p>
-          <p className={styles.billingWebhook}>
-            Webhook URL (configure in Cashfree dashboard):{" "}
-            <code className={styles.inlineCode}>
-              {(process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "")}/api/webhooks/cashfree
-            </code>
-          </p>
-          {!billingActive ? <CashfreeSubscribeButton /> : null}
-        </section>
+        <DashboardPanel title="Subscription (Cashfree)" lead="Active billing is required to generate API keys and view ingest events.">
+          <div className={styles.billingBody}>
+            <p className={styles.billingStatus}>
+              Status:{" "}
+              <span className={billingActive ? styles.billingOk : styles.billingWarn}>
+                {billing?.status ?? "not started"}
+              </span>
+              {billing?.cf_subscription_id ? (
+                <span className={styles.billingMeta}> · Cashfree id {billing.cf_subscription_id}</span>
+              ) : null}
+            </p>
+            <p className={styles.billingWebhook}>
+              Webhook URL:{" "}
+              <code className={styles.inlineCode}>
+                {(process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "")}/api/webhooks/cashfree
+              </code>
+            </p>
+            {!billingActive ? <CashfreeSubscribeButton /> : null}
+          </div>
+        </DashboardPanel>
       ) : null}
-      <div>
-        <h1 className={styles.blockTitle}>Projects</h1>
-        <p className={styles.blockLead}>
-          Each project has a <code className={styles.inlineCode}>companyId</code> used in the SDK. Create an API key on the project page.
-        </p>
-      </div>
+
       <CreateProjectForm />
-      <div>
-        <h2 className={styles.sectionTitle}>Your projects</h2>
+
+      <DashboardPanel title="Your projects">
         {projects.length === 0 ? (
           <p className={styles.empty}>No projects yet. Create one above.</p>
         ) : (
@@ -71,7 +73,7 @@ export default async function DashboardPage() {
             ))}
           </ul>
         )}
-      </div>
+      </DashboardPanel>
     </div>
   );
 }

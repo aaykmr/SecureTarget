@@ -39,14 +39,14 @@ export function LoginForm() {
           <p className={styles.bannerSuccess}>Account created. Sign in below.</p>
         )}
         {error && <p className={styles.bannerError}>{error}</p>}
-        <label className={styles.field}>
-          <span className={styles.label}>Email</span>
-          <Input name="email" type="email" required autoComplete="email" />
-        </label>
-        <label className={styles.field}>
-          <span className={styles.label}>Password</span>
-          <Input name="password" type="password" required autoComplete="current-password" />
-        </label>
+        <Input name="email" type="email" label="Email" required autoComplete="email" />
+        <Input
+          name="password"
+          type="password"
+          label="Password"
+          required
+          autoComplete="current-password"
+        />
         <Button type="submit" disabled={pending} variant="primary" fullWidth>
           {pending ? "Signing in…" : "Sign in"}
         </Button>

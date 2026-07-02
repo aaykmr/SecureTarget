@@ -65,4 +65,24 @@
   /* Components */
   --color-nav-border: var(--palette-medium-dark);
   --color-card-border: var(--palette-medium-dark);
+
+  /* Dashboard chrome */
+  --dash-accent-glow: color-mix(in srgb, var(--palette-brand-blue) 22%, transparent);
+  --dash-accent-line: linear-gradient(
+    90deg,
+    var(--palette-brand-blue),
+    var(--palette-light-blue) 55%,
+    transparent
+  );
+  --dash-surface-gradient: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--palette-medium-dark) 55%, var(--color-surface)) 0%,
+    var(--color-surface) 42%
+  );
+  --dash-canvas-glow: radial-gradient(
+    ellipse 90% 60% at 8% -10%,
+    color-mix(in srgb, var(--palette-brand-blue) 16%, transparent),
+    transparent 58%
+  );
+  --dash-sidebar-glass: color-mix(in srgb, var(--color-surface) 92%, transparent);
 }

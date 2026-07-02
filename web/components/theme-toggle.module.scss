@@ -27,6 +27,11 @@
     background: var(--color-hover-bg);
     color: var(--color-hover-fg);
   }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+  }
 }
 
 .icon {

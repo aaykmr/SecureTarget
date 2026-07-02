@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
+import { DashboardPageHeader } from "@/components/dashboard/page-header";
 import { getDb } from "@/lib/db";
 import { countSdkEventsForCompany, getProjectForUser, listSdkEventsForCompany } from "@/lib/repos";
 import { EventsExplorer } from "./events-explorer";
@@ -53,15 +53,17 @@ export default async function ProjectEventsPage({
 
   return (
     <div className={styles.root}>
-      <div>
-        <Link href={`/dashboard/${projectId}`} className={styles.backLink}>
-          ← Overview
-        </Link>
-        <h1 className={styles.title}>Events</h1>
-        <p className={styles.lead}>
-          Ingested SDK rows from <code className={styles.inlineCode}>sdk_events</code> for this project. Filter by the same opaque token you send in event payloads.
-        </p>
-      </div>
+      <DashboardPageHeader
+        backHref={`/dashboard/${projectId}`}
+        backLabel="Get started"
+        eyebrow="Ingest"
+        title="Events"
+        description={
+          <p>
+            Ingested SDK rows from <code>sdk_events</code> for this project. Filter by the opaque token sent in event payloads.
+          </p>
+        }
+      />
 
       <EventsExplorer
         projectId={projectId}

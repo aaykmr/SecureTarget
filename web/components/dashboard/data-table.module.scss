@@ -1,0 +1,82 @@
+.shell {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-card-border);
+  background: var(--dash-surface-gradient);
+  overflow: hidden;
+}
+
+.scroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  min-width: 40rem;
+  border-collapse: collapse;
+  font-size: var(--text-body-sm);
+}
+
+.caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.table thead {
+  background: color-mix(in srgb, var(--color-surface-elevated) 70%, transparent);
+}
+
+.table th {
+  padding: var(--space-5) var(--space-7);
+  text-align: left;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+  border-bottom: 1px solid var(--color-border-default);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: var(--space-6) var(--space-7);
+  color: var(--color-fg-default);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border-default) 65%, transparent);
+  vertical-align: top;
+}
+
+.table tbody tr {
+  transition: background-color 0.12s ease;
+}
+
+.table tbody tr:hover {
+  background: color-mix(in srgb, var(--color-accent-interactive) 6%, transparent);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.empty {
+  padding: var(--space-10) var(--space-7) !important;
+  text-align: center;
+  color: var(--color-fg-muted);
+  font-size: var(--text-body-sm);
+  line-height: 1.55;
+
+  a {
+    color: var(--color-accent-interactive);
+    font-weight: 500;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
