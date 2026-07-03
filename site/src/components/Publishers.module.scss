@@ -1,0 +1,74 @@
+.section {
+  padding: clamp(4rem, 10vw, 7rem) var(--gutter);
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--accent-cyan) 6%, #fff) 50%, transparent);
+}
+
+.container {
+  max-width: var(--container);
+  margin: 0 auto;
+}
+
+.header {
+  max-width: 32rem;
+  margin-bottom: 2.5rem;
+}
+
+.intro {
+  margin: 1rem 0 0;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+
+.eyebrow {
+  margin: 0 0 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  padding: 2rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent-cyan) 8%, #fff) 0%, var(--bg-card) 100%);
+  box-shadow: var(--shadow-sm);
+}
+
+.cardTitle {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.cardText {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+}

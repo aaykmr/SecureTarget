@@ -1,0 +1,59 @@
+.footer {
+  padding: 2.5rem var(--gutter);
+  border-top: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  max-width: var(--container);
+  margin: 0 auto;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.brandWordmark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+
+  a {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    text-decoration: none;
+
+    &:hover {
+      color: var(--text);
+    }
+  }
+}
+
+.copy {
+  margin: 0;
+  width: 100%;
+  font-size: 0.8rem;
+  color: var(--text-subtle);
+  text-align: center;
+}
+
+@media (min-width: 640px) {
+  .copy {
+    width: auto;
+    text-align: right;
+    margin-left: auto;
+  }
+}

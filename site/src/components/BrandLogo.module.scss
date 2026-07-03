@@ -1,0 +1,28 @@
+.logoImg {
+  display: block;
+  height: 2rem;
+  width: auto;
+  max-width: 10rem;
+  object-fit: contain;
+}
+
+.logoMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  background: var(--gradient);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--on-accent);
+  flex-shrink: 0;
+}
+
+.logoText {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}

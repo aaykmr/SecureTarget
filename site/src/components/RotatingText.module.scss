@@ -1,0 +1,57 @@
+.root {
+  display: inline-block;
+  position: relative;
+  vertical-align: baseline;
+  min-width: 6ch;
+  text-align: left;
+}
+
+.word {
+  display: inline-block;
+  background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 45%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 800;
+}
+
+.wordIn {
+  animation: wordIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.wordOut {
+  animation: wordOut 0.32s cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+@keyframes wordIn {
+  from {
+    opacity: 0;
+    transform: translateY(0.65em) rotateX(-40deg);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotateX(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes wordOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) rotateX(0);
+    filter: blur(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-0.5em) rotateX(40deg);
+    filter: blur(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wordIn,
+  .wordOut {
+    animation: none;
+  }
+}

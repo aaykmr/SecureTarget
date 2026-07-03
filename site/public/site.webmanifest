@@ -1,0 +1,24 @@
+{
+  "name": "TrustTargets",
+  "short_name": "TrustTargets",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/mstile-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-64x64.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#f7f6f3",
+  "background_color": "#f7f6f3",
+  "display": "standalone"
+}
