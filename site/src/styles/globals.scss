@@ -32,6 +32,13 @@
   --shadow-md: 0 8px 30px rgba(15, 15, 18, 0.08);
   --on-accent: #ffffff;
   --on-secondary: #1a1a1a;
+  /* Full viewport height – svh avoids mobile toolbar scroll jitter */
+  --height-full: 100vh;
+  --height-full: 100svh;
+  --height-full-dynamic: 100vh;
+  --height-full-dynamic: 100dvh;
+  --height-full-large: 100vh;
+  --height-full-large: 100lvh;
 }
 
 *,
@@ -43,6 +50,7 @@
 html {
   scroll-behavior: smooth;
   color-scheme: light;
+  min-height: var(--height-full-js, var(--height-full));
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -82,7 +90,7 @@ textarea {
 }
 
 #root {
-  min-height: 100vh;
+  min-height: var(--height-full-js, var(--height-full));
 }
 
 .sr-only {
