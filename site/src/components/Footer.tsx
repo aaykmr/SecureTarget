@@ -15,6 +15,7 @@ export function Footer() {
           <a href="#services">Services</a>
           <a href="#advertisers">Brands</a>
           <a href="#publishers">Partners</a>
+          <a href="#products">Products</a>
           <a href="#contact">Contact</a>
         </nav>
         <p className={styles.copy}>
