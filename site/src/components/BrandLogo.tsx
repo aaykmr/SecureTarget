@@ -1,7 +1,7 @@
 import { useState } from "react";
 import styles from "./BrandLogo.module.scss";
 
-const LOGO_SOURCES = ["/logo.webp", "/logo.svg", "/logo.png"] as const;
+const LOGO_SOURCES = ["/logo.png", "/logo.svg", "/logo.png"] as const;
 
 export function BrandLogo({
   showWordmark = true,
@@ -23,7 +23,10 @@ export function BrandLogo({
   return (
     <>
       {useFallback ? (
-        <span className={`${styles.logoMark} ${markClassName ?? ""}`} aria-hidden>
+        <span
+          className={`${styles.logoMark} ${markClassName ?? ""}`}
+          aria-hidden
+        >
           T
         </span>
       ) : (
@@ -35,7 +38,9 @@ export function BrandLogo({
         />
       )}
       {showWordmark ? (
-        <span className={`${styles.logoText} ${wordmarkClassName ?? ""}`}>TrustTargets</span>
+        <span className={`${styles.logoText} ${wordmarkClassName ?? ""}`}>
+          TrustTargets
+        </span>
       ) : null}
     </>
   );

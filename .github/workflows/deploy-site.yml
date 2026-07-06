@@ -40,6 +40,8 @@ jobs:
 
       - name: Build site
         run: npm run build --workspace @securetarget/site
+        env:
+          VITE_GOOGLE_SHEETS_SCRIPT_URL: ${{ secrets.VITE_GOOGLE_SHEETS_SCRIPT_URL }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4

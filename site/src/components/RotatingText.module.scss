@@ -8,7 +8,7 @@
 
 .word {
   display: inline-block;
-  background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 45%, #38bdf8 100%);
+  background: var(--gradient);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

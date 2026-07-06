@@ -1,12 +1,51 @@
 import { FormEvent, useState } from "react";
 import styles from "./Contact.module.scss";
 
+const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SHEETS_SCRIPT_URL?.trim();
+
 export function Contact() {
   const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function onSubmit(e: FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setSent(true);
+    setError(null);
+
+    if (!SCRIPT_URL) {
+      setError("Form is not configured yet. Email hello@trusttargets.com instead.");
+      return;
+    }
+
+    const form = e.currentTarget;
+    const data = {
+      name: (form.elements.namedItem("name") as HTMLInputElement).value.trim(),
+      email: (form.elements.namedItem("email") as HTMLInputElement).value.trim(),
+      phone: (form.elements.namedItem("phone") as HTMLInputElement).value.trim(),
+      message: (form.elements.namedItem("message") as HTMLTextAreaElement).value.trim(),
+    };
+
+    setSubmitting(true);
+
+    try {
+      const response = await fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(data),
+      });
+
+      const result = (await response.json()) as { ok?: boolean };
+      if (!response.ok || !result.ok) {
+        throw new Error("Submission failed");
+      }
+
+      setSent(true);
+      form.reset();
+    } catch {
+      setError("Could not send your message. Please email hello@trusttargets.com.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -43,6 +82,7 @@ export function Contact() {
               </p>
             ) : (
               <>
+                {error ? <p className={styles.error}>{error}</p> : null}
                 <label className={styles.field}>
                   <span>Full name *</span>
                   <input
@@ -51,6 +91,7 @@ export function Contact() {
                     required
                     autoComplete="name"
                     placeholder="Your name"
+                    disabled={submitting}
                   />
                 </label>
                 <label className={styles.field}>
@@ -61,6 +102,7 @@ export function Contact() {
                     required
                     autoComplete="email"
                     placeholder="you@company.com"
+                    disabled={submitting}
                   />
                 </label>
                 <label className={styles.field}>
@@ -71,6 +113,7 @@ export function Contact() {
                     required
                     autoComplete="tel"
                     placeholder="+1 …"
+                    disabled={submitting}
                   />
                 </label>
                 <label className={styles.field}>
@@ -80,10 +123,11 @@ export function Contact() {
                     rows={4}
                     required
                     placeholder="Briefly describe your goals, markets, or partnership interest."
+                    disabled={submitting}
                   />
                 </label>
-                <button type="submit" className={styles.submit}>
-                  Submit
+                <button type="submit" className={styles.submit} disabled={submitting}>
+                  {submitting ? "Sending…" : "Submit"}
                 </button>
               </>
             )}

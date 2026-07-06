@@ -158,10 +158,25 @@
   cursor: pointer;
   transition: opacity 0.15s ease, transform 0.15s ease;
 
-  &:hover {
+  &:hover:not(:disabled) {
     opacity: 0.92;
     transform: translateY(-1px);
   }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+}
+
+.error {
+  margin: 0 0 1rem;
+  padding: 1rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, #dc2626 35%, transparent);
+  background: color-mix(in srgb, #dc2626 8%, #fff);
+  color: #b91c1c;
+  font-size: 0.95rem;
 }
 
 .success {
