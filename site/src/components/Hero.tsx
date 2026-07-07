@@ -39,11 +39,6 @@ export function Hero() {
           ))}
         </div>
       </div>
-
-      <a href="#about" className={styles.scrollHint} aria-label="Scroll to about">
-        <span>Scroll</span>
-        <span className={styles.scrollLine} />
-      </a>
     </section>
   );
 }
