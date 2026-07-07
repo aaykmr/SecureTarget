@@ -80,7 +80,7 @@ export function Contact() {
 
             <div className={styles.block}>
               <span className={styles.blockLabel}>Corporate office</span>
-              <p className={styles.text}>Dehradun, India</p>
+              <p className={styles.text}>Gurgaon, India</p>
             </div>
           </div>
 
