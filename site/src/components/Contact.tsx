@@ -13,16 +13,24 @@ export function Contact() {
     setError(null);
 
     if (!SCRIPT_URL) {
-      setError("Form is not configured yet. Email hello@trusttargets.com instead.");
+      setError(
+        "Form is not configured yet. Email hello@trusttargets.com instead.",
+      );
       return;
     }
 
     const form = e.currentTarget;
     const data = {
       name: (form.elements.namedItem("name") as HTMLInputElement).value.trim(),
-      email: (form.elements.namedItem("email") as HTMLInputElement).value.trim(),
-      phone: (form.elements.namedItem("phone") as HTMLInputElement).value.trim(),
-      message: (form.elements.namedItem("message") as HTMLTextAreaElement).value.trim(),
+      email: (
+        form.elements.namedItem("email") as HTMLInputElement
+      ).value.trim(),
+      phone: (
+        form.elements.namedItem("phone") as HTMLInputElement
+      ).value.trim(),
+      message: (
+        form.elements.namedItem("message") as HTMLTextAreaElement
+      ).value.trim(),
     };
 
     setSubmitting(true);
@@ -42,7 +50,9 @@ export function Contact() {
       setSent(true);
       form.reset();
     } catch {
-      setError("Could not send your message. Please email hello@trusttargets.com.");
+      setError(
+        "Could not send your message. Please email hello@trusttargets.com.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -69,7 +79,7 @@ export function Contact() {
             </div>
 
             <div className={styles.block}>
-              <span className={styles.blockLabel}>Head office</span>
+              <span className={styles.blockLabel}>Corporate office</span>
               <p className={styles.text}>Dehradun, India</p>
             </div>
           </div>
@@ -126,7 +136,11 @@ export function Contact() {
                     disabled={submitting}
                   />
                 </label>
-                <button type="submit" className={styles.submit} disabled={submitting}>
+                <button
+                  type="submit"
+                  className={styles.submit}
+                  disabled={submitting}
+                >
                   {submitting ? "Sending…" : "Submit"}
                 </button>
               </>

@@ -9,7 +9,6 @@ const LINKS = [
   { href: "#advertisers", label: "For brands" },
   { href: "#publishers", label: "For partners" },
   { href: "#products", label: "Products" },
-  { href: "#contact", label: "Contact" },
 ] as const;
 
 export function Navbar() {
@@ -34,13 +33,22 @@ export function Navbar() {
   }, [open]);
 
   return (
-    <header ref={navRef} className={`${styles.header} ${scrolled ? styles.headerScrolled : ""}`}>
+    <header
+      ref={navRef}
+      className={`${styles.header} ${scrolled ? styles.headerScrolled : ""}`}
+    >
       <div className={styles.inner}>
         <a href="#home" className={styles.logo}>
-          <BrandLogo markClassName={styles.logoMark} wordmarkClassName={styles.logoWordmark} />
+          <BrandLogo
+            markClassName={styles.logoMark}
+            wordmarkClassName={styles.logoWordmark}
+          />
         </a>
 
-        <nav className={`${styles.nav} ${open ? styles.navOpen : ""}`} aria-label="Primary">
+        <nav
+          className={`${styles.nav} ${open ? styles.navOpen : ""}`}
+          aria-label="Primary"
+        >
           {LINKS.map((link) => (
             <a
               key={link.href}
@@ -51,7 +59,11 @@ export function Navbar() {
               {link.label}
             </a>
           ))}
-          <a href="#contact" className={styles.cta} onClick={() => setOpen(false)}>
+          <a
+            href="#contact"
+            className={styles.cta}
+            onClick={() => setOpen(false)}
+          >
             Get in touch
           </a>
         </nav>
