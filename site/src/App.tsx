@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Navbar } from "./components/Navbar";
 import { Hero } from "./components/Hero";
 import { About } from "./components/About";
@@ -7,8 +8,13 @@ import { Publishers } from "./components/Publishers";
 import { Products } from "./components/Products";
 import { Contact } from "./components/Contact";
 import { Footer } from "./components/Footer";
+import { initEngagementTracking } from "./lib/analytics";
 
 export default function App() {
+  useEffect(() => {
+    initEngagementTracking();
+  }, []);
+
   return (
     <>
       <Navbar />

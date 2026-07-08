@@ -42,6 +42,7 @@ jobs:
         run: npm run build --workspace @securetarget/site
         env:
           VITE_GOOGLE_SHEETS_SCRIPT_URL: ${{ secrets.VITE_GOOGLE_SHEETS_SCRIPT_URL }}
+          VITE_GA_MEASUREMENT_ID: ${{ secrets.VITE_GA_MEASUREMENT_ID }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4

@@ -62,6 +62,8 @@ export function Navbar() {
           <a
             href="#contact"
             className={styles.cta}
+            data-cta="get_in_touch"
+            data-cta-location="navbar"
             onClick={() => setOpen(false)}
           >
             Get in touch

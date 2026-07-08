@@ -1,4 +1,9 @@
 import { FormEvent, useState } from "react";
+import {
+  trackContactError,
+  trackContactSubmit,
+  trackContactSuccess,
+} from "../lib/analytics";
 import styles from "./Contact.module.scss";
 
 const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SHEETS_SCRIPT_URL?.trim();
@@ -13,6 +18,7 @@ export function Contact() {
     setError(null);
 
     if (!SCRIPT_URL) {
+      trackContactError("not_configured");
       setError(
         "Form is not configured yet. Email hello@trusttargets.com instead.",
       );
@@ -33,6 +39,7 @@ export function Contact() {
       ).value.trim(),
     };
 
+    trackContactSubmit();
     setSubmitting(true);
 
     try {
@@ -47,9 +54,11 @@ export function Contact() {
         throw new Error("Submission failed");
       }
 
+      trackContactSuccess();
       setSent(true);
       form.reset();
     } catch {
+      trackContactError("request_failed");
       setError(
         "Could not send your message. Please email hello@trusttargets.com.",
       );

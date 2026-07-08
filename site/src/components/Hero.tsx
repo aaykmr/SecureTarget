@@ -23,10 +23,20 @@ export function Hero() {
         </p>
 
         <div className={styles.actions}>
-          <a href="#contact" className={styles.primaryBtn}>
+          <a
+            href="#contact"
+            className={styles.primaryBtn}
+            data-cta="start_conversation"
+            data-cta-location="hero"
+          >
             Start a conversation
           </a>
-          <a href="#services" className={styles.secondaryBtn}>
+          <a
+            href="#services"
+            className={styles.secondaryBtn}
+            data-cta="see_what_we_do"
+            data-cta-location="hero"
+          >
             See what we do
           </a>
         </div>

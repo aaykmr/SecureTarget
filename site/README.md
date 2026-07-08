@@ -21,3 +21,7 @@ Output: `site/dist/`
 ## Brand assets
 
 Drop logo and favicon files in [`public/`](public/). See [`public/README.md`](public/README.md) for filenames. They are served from `/` in dev and copied into `dist/` on build.
+
+## Analytics
+
+Google Analytics 4 setup, env vars, and custom events: [`ANALYTICS.md`](ANALYTICS.md).
