@@ -2,7 +2,18 @@
 
 The marketing site loads GA4 when `VITE_GA_MEASUREMENT_ID` is set (e.g. `G-XXXXXXXXXX`).
 
-Implementation: [`src/lib/analytics.ts`](src/lib/analytics.ts). Init runs from [`src/main.tsx`](src/main.tsx); section engagement starts after React mounts in [`src/App.tsx`](src/App.tsx).
+Implementation: [`src/lib/analytics.ts`](src/lib/analytics.ts). GA loads only after cookie consent (see below). Section engagement starts after React mounts in [`src/App.tsx`](src/App.tsx).
+
+## Cookie consent
+
+[`CookieConsent`](src/components/CookieConsent.tsx) shows a bottom banner on first visit. Choice is stored in `localStorage` (`tt_cookie_consent`).
+
+| Action | Analytics |
+|--------|-----------|
+| **Accept all** | GA4 script loads; page views and custom events run |
+| **Essential only** | No gtag script; tracking helpers are no-ops |
+
+Returning visitors: if analytics was previously accepted, GA initializes on page load without showing the banner again.
 
 ## Setup
 
@@ -18,6 +29,18 @@ Implementation: [`src/lib/analytics.ts`](src/lib/analytics.ts). Init runs from [
 5. Verify in **GA4 → Reports → Realtime** (and **Realtime → Events** for custom events).
 
 If the env var is missing, no gtag script loads and tracking helpers are no-ops.
+
+### Debugging: `dataLayer` fills but no Network requests
+
+Google’s snippet must push the **`arguments` object**, not a JS `Array`:
+
+```js
+function gtag(){ dataLayer.push(arguments); }
+```
+
+If you see normal arrays in `dataLayer` (e.g. `Array(3)`) instead of `Arguments`, gtag.js will queue nothing and never hit `google-analytics.com/g/collect`.
+
+In DevTools Network, filter by `collect` or `google-analytics`. GA4 often uses **`fetch` / `sendBeacon`** and may **batch** events, so a click/scroll may not produce one request per event.
 
 ## Automatic measurement
 
@@ -79,6 +102,7 @@ Mailto / tel / outbound links are tracked automatically for all anchors (no extr
 
 - [ ] `VITE_GA_MEASUREMENT_ID` in `site/.env`
 - [ ] Dev server restarted
-- [ ] Realtime shows your visit
+- [ ] Accept cookies in the banner to enable tracking locally
+- [ ] Realtime shows your visit (after consent)
 - [ ] CTA / form / scroll events appear under Realtime → Events
 - [ ] GitHub secret set before next production deploy

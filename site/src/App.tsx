@@ -8,15 +8,27 @@ import { Publishers } from "./components/Publishers";
 import { Products } from "./components/Products";
 import { Contact } from "./components/Contact";
 import { Footer } from "./components/Footer";
-import { initEngagementTracking } from "./lib/analytics";
+import { CookieConsent } from "./components/CookieConsent";
+import { initAnalytics, initEngagementTracking } from "./lib/analytics";
+import { getAnalyticsConsent } from "./lib/cookie-consent";
 
 export default function App() {
   useEffect(() => {
-    initEngagementTracking();
+    if (getAnalyticsConsent()) {
+      initAnalytics();
+      initEngagementTracking();
+    }
   }, []);
+
+  function onConsentApplied(analytics: boolean) {
+    if (analytics) {
+      initEngagementTracking();
+    }
+  }
 
   return (
     <>
+      <CookieConsent onConsentApplied={onConsentApplied} />
       <Navbar />
       <main>
         <Hero />

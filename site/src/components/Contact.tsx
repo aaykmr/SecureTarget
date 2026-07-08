@@ -1,21 +1,73 @@
 import { FormEvent, useState } from "react";
+import * as yup from "yup";
 import {
   trackContactError,
   trackContactSubmit,
   trackContactSuccess,
 } from "../lib/analytics";
+import {
+  contactFormSchema,
+  formatPhoneE164,
+  type ContactFormValues,
+} from "../lib/contact-form-schema";
+import {
+  getDefaultCountryOption,
+  type CountryDialOption,
+} from "../lib/country-dial-options";
+import { PhoneCountryField } from "./PhoneCountryField";
 import styles from "./Contact.module.scss";
 
 const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SHEETS_SCRIPT_URL?.trim();
+
+const EMPTY_FORM: ContactFormValues = {
+  name: "",
+  email: "",
+  nationalNumber: "",
+  message: "",
+};
+
+type FieldErrors = Partial<Record<keyof ContactFormValues, string>>;
 
 export function Contact() {
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [values, setValues] = useState<ContactFormValues>(EMPTY_FORM);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [country, setCountry] = useState<CountryDialOption>(getDefaultCountryOption);
+
+  function updateField<K extends keyof ContactFormValues>(key: K, value: ContactFormValues[K]) {
+    setValues((prev) => ({ ...prev, [key]: value }));
+    setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
+  }
+
+  function resetForm() {
+    setValues(EMPTY_FORM);
+    setFieldErrors({});
+    setCountry(getDefaultCountryOption());
+  }
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    setFieldErrors({});
+
+    let validated: ContactFormValues;
+    try {
+      validated = await contactFormSchema.validate(values, { abortEarly: false });
+    } catch (err) {
+      if (err instanceof yup.ValidationError) {
+        const next: FieldErrors = {};
+        for (const issue of err.inner) {
+          const key = issue.path as keyof ContactFormValues | undefined;
+          if (key && !next[key]) {
+            next[key] = issue.message;
+          }
+        }
+        setFieldErrors(next);
+      }
+      return;
+    }
 
     if (!SCRIPT_URL) {
       trackContactError("not_configured");
@@ -25,18 +77,11 @@ export function Contact() {
       return;
     }
 
-    const form = e.currentTarget;
     const data = {
-      name: (form.elements.namedItem("name") as HTMLInputElement).value.trim(),
-      email: (
-        form.elements.namedItem("email") as HTMLInputElement
-      ).value.trim(),
-      phone: (
-        form.elements.namedItem("phone") as HTMLInputElement
-      ).value.trim(),
-      message: (
-        form.elements.namedItem("message") as HTMLTextAreaElement
-      ).value.trim(),
+      name: validated.name,
+      email: validated.email,
+      phone: formatPhoneE164(country.dial, validated.nationalNumber),
+      message: validated.message,
     };
 
     trackContactSubmit();
@@ -56,7 +101,7 @@ export function Contact() {
 
       trackContactSuccess();
       setSent(true);
-      form.reset();
+      resetForm();
     } catch {
       trackContactError("request_failed");
       setError(
@@ -93,7 +138,7 @@ export function Contact() {
             </div>
           </div>
 
-          <form className={styles.form} onSubmit={onSubmit}>
+          <form className={styles.form} onSubmit={onSubmit} noValidate>
             <h3 className={styles.formTitle}>Send a message</h3>
             {sent ? (
               <p className={styles.success}>
@@ -107,43 +152,55 @@ export function Contact() {
                   <input
                     name="name"
                     type="text"
-                    required
+                    value={values.name}
+                    onChange={(e) => updateField("name", e.target.value)}
                     autoComplete="name"
                     placeholder="Your name"
                     disabled={submitting}
+                    aria-invalid={Boolean(fieldErrors.name)}
                   />
+                  {fieldErrors.name ? (
+                    <span className={styles.fieldError}>{fieldErrors.name}</span>
+                  ) : null}
                 </label>
                 <label className={styles.field}>
                   <span>Work email *</span>
                   <input
                     name="email"
                     type="email"
-                    required
+                    value={values.email}
+                    onChange={(e) => updateField("email", e.target.value)}
                     autoComplete="email"
                     placeholder="you@company.com"
                     disabled={submitting}
+                    aria-invalid={Boolean(fieldErrors.email)}
                   />
+                  {fieldErrors.email ? (
+                    <span className={styles.fieldError}>{fieldErrors.email}</span>
+                  ) : null}
                 </label>
-                <label className={styles.field}>
-                  <span>Phone *</span>
-                  <input
-                    name="phone"
-                    type="tel"
-                    required
-                    autoComplete="tel"
-                    placeholder="+1 …"
-                    disabled={submitting}
-                  />
-                </label>
+                <PhoneCountryField
+                  country={country}
+                  nationalNumber={values.nationalNumber}
+                  onCountryChange={setCountry}
+                  onNationalNumberChange={(value) => updateField("nationalNumber", value)}
+                  disabled={submitting}
+                  error={fieldErrors.nationalNumber}
+                />
                 <label className={styles.field}>
                   <span>How can we help? *</span>
                   <textarea
                     name="message"
                     rows={4}
-                    required
+                    value={values.message}
+                    onChange={(e) => updateField("message", e.target.value)}
                     placeholder="Briefly describe your goals, markets, or partnership interest."
                     disabled={submitting}
+                    aria-invalid={Boolean(fieldErrors.message)}
                   />
+                  {fieldErrors.message ? (
+                    <span className={styles.fieldError}>{fieldErrors.message}</span>
+                  ) : null}
                 </label>
                 <button
                   type="submit"

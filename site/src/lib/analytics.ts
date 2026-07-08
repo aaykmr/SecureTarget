@@ -1,3 +1,5 @@
+import { getAnalyticsConsent } from "./cookie-consent";
+
 const MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID?.trim();
 
 declare global {
@@ -22,7 +24,7 @@ const SCROLL_MILESTONES = [25, 50, 75, 90, 100] as const;
 type EventParams = Record<string, string | number | boolean | undefined>;
 
 function isAnalyticsEnabled(): boolean {
-  return Boolean(MEASUREMENT_ID);
+  return Boolean(MEASUREMENT_ID) && getAnalyticsConsent();
 }
 
 export function trackEvent(name: string, params?: EventParams): void {
@@ -193,12 +195,18 @@ export function initEngagementTracking(): void {
   initSectionEngagementTracking();
 }
 
+let analyticsInitialized = false;
+
 export function initAnalytics(): void {
-  if (!isAnalyticsEnabled()) return;
+  if (!MEASUREMENT_ID || !getAnalyticsConsent() || analyticsInitialized) return;
+  analyticsInitialized = true;
 
   window.dataLayer = window.dataLayer ?? [];
-  window.gtag = function gtag(...args: unknown[]) {
-    window.dataLayer?.push(args);
+  // Must push `arguments` (not a rest-parameter Array). gtag.js checks for an
+  // Arguments object when flushing the queue; Arrays are ignored → no network.
+  window.gtag = function gtag() {
+    // eslint-disable-next-line prefer-rest-params
+    window.dataLayer?.push(arguments);
   };
 
   const script = document.createElement("script");
