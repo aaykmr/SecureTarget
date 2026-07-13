@@ -18,6 +18,50 @@
   color: var(--color-fg-default);
 }
 
+.aiSection {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: color-mix(in srgb, var(--color-canvas) 55%, transparent);
+  padding: var(--space-5) var(--space-6);
+}
+
+.aiLead {
+  margin: 0 0 var(--space-5);
+  font-size: var(--text-caption-sm);
+  line-height: 1.5;
+  color: var(--color-fg-muted);
+}
+
+.aiActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.aiBtn {
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-card-border);
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  color: var(--color-fg-default);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--color-accent-interactive) 45%, var(--color-card-border));
+    background: color-mix(in srgb, var(--color-accent-interactive) 10%, transparent);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+  }
+}
+
 .configGrid {
   display: grid;
   gap: var(--space-4);

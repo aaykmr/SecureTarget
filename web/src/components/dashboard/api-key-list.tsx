@@ -72,6 +72,7 @@ export function ApiKeyList({
 
   return (
     <div className={styles.root}>
+      <p className={styles.prefixHint}>Only the prefix is stored — generate a new key to rotate.</p>
       {activeKey ? (
         <ul className={styles.keyList}>
           <KeyRow keyRow={activeKey} projectId={projectId} showRevoke onRevoked={onRevoked} />

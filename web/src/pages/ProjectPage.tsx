@@ -33,10 +33,13 @@ export function ProjectPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (options?: { silent?: boolean }) => {
     if (!token || !projectId) return;
-    setLoading(true);
-    setNotFound(false);
+    const silent = options?.silent ?? false;
+    if (!silent) {
+      setLoading(true);
+      setNotFound(false);
+    }
     try {
       const [{ project: p }, { apiKeys }] = await Promise.all([
         api.getProject(token, projectId),
@@ -45,11 +48,15 @@ export function ProjectPage() {
       setProject(p);
       setKeys(apiKeys);
     } catch {
-      setNotFound(true);
-      setProject(null);
-      setKeys([]);
+      if (!silent) {
+        setNotFound(true);
+        setProject(null);
+        setKeys([]);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, [token, projectId]);
 
@@ -104,10 +111,10 @@ export function ProjectPage() {
           <CreateApiKeyForm
             projectId={project.id}
             hasActiveKey={hasActiveKey}
-            onChanged={load}
+            onChanged={() => void load({ silent: true })}
           />
         </div>
-        <ApiKeyList keys={keys} projectId={project.id} onRevoked={load} />
+        <ApiKeyList keys={keys} projectId={project.id} onRevoked={() => void load({ silent: true })} />
       </DashboardPanel>
 
       <DashboardPanel

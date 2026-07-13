@@ -36,30 +36,18 @@
   display: flex;
   width: 100%;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
   box-sizing: border-box;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-sm);
   background: var(--color-canvas);
   padding: var(--space-4) var(--space-5);
-  cursor: copy;
-  text-align: left;
-  font: inherit;
-  color: inherit;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+}
 
-  &:hover {
-    border-color: color-mix(in srgb, var(--color-accent-cta) 45%, var(--color-border-subtle));
-    background: color-mix(in srgb, var(--color-accent-cta) 8%, var(--color-canvas));
-  }
-
-  &:focus-visible {
-    outline: none;
-    box-shadow: var(--shadow-focus);
-  }
+.successActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
 }
 
 .keyCode {
@@ -71,13 +59,3 @@
   line-height: 1.35;
 }
 
-.copyIcon {
-  flex-shrink: 0;
-  margin-top: 1px;
-  color: var(--color-fg-muted);
-  transition: color 0.15s ease;
-}
-
-.keyCopyRow:hover .copyIcon {
-  color: var(--color-accent-cta);
-}

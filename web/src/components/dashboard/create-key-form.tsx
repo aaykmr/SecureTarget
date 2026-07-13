@@ -61,15 +61,18 @@ export function CreateApiKeyForm({
       {fullKey ? (
         <div className={styles.successBox}>
           <p className={styles.successLead}>Copy this key now — it won&apos;t be shown again.</p>
-          <button
-            type="button"
-            className={styles.keyCopyRow}
-            onClick={() => void copyApiKey()}
-            aria-label="Copy API key to clipboard"
-          >
+          <div className={styles.keyCopyRow}>
             <code className={styles.keyCode}>{fullKey}</code>
-            <HugeIcon icon={Copy01Icon} size={16} className={styles.copyIcon} />
-          </button>
+          </div>
+          <div className={styles.successActions}>
+            <Button type="button" variant="primary" size="sm" onClick={() => void copyApiKey()}>
+              <HugeIcon icon={Copy01Icon} size={16} />
+              Copy API key
+            </Button>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setFullKey(null)}>
+              Dismiss
+            </Button>
+          </div>
         </div>
       ) : null}
     </div>

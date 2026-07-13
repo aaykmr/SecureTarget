@@ -60,6 +60,18 @@ export const api = {
       body: JSON.stringify({ email, password }),
     });
   },
+  forgotPassword(email: string) {
+    return request<{ ok: boolean }>("/v1/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+  },
+  resetPassword(token: string, password: string) {
+    return request<{ ok: boolean; message?: string }>("/v1/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+    });
+  },
   me(token: string) {
     return request<{ user: User }>("/v1/auth/me", { token });
   },

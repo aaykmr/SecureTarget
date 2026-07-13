@@ -128,6 +128,39 @@ export async function handleDashboardApi(
     return true;
   }
 
+  // POST /v1/auth/forgot-password (stub — email delivery not wired yet)
+  if (req.method === "POST" && parts[0] === "auth" && parts[1] === "forgot-password") {
+    try {
+      const body = (await readJsonBody(req)) as { email?: string };
+      void String(body.email ?? "").trim();
+      sendJson(res, 200, { ok: true });
+    } catch {
+      sendJson(res, 500, { error: "Request failed." });
+    }
+    return true;
+  }
+
+  // POST /v1/auth/reset-password (stub — token verification + email not wired yet)
+  if (req.method === "POST" && parts[0] === "auth" && parts[1] === "reset-password") {
+    try {
+      const body = (await readJsonBody(req)) as { token?: string; password?: string };
+      const token = String(body.token ?? "").trim();
+      const password = String(body.password ?? "");
+      if (!token || !password) {
+        sendJson(res, 400, { error: "Token and password are required." });
+        return true;
+      }
+      if (password.length < 8) {
+        sendJson(res, 400, { error: "Password must be at least 8 characters." });
+        return true;
+      }
+      sendJson(res, 501, { error: "Password reset is not enabled yet" });
+    } catch {
+      sendJson(res, 500, { error: "Request failed." });
+    }
+    return true;
+  }
+
   const auth = getBearerUserId(req);
   if (!auth) {
     sendJson(res, 401, { error: "Unauthorized" });

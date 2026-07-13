@@ -47,6 +47,17 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
   );
 }
 
+function GenerateApiKeyStep({ n }: { n: number }) {
+  return (
+    <Step n={n} title="Generate an API key">
+      <p>
+        Use the <strong>API keys</strong> panel above. Save the full key once — only the prefix is shown later.
+        Never commit production keys to git; use env vars or server-side injection.
+      </p>
+    </Step>
+  );
+}
+
 function SdkDownload({ href, label, hint }: { href: string; label: string; hint: string }) {
   return (
     <a href={href} className={styles.downloadCard} download>
@@ -66,6 +77,7 @@ export function IntegrationSnippets({ companyId, projectId }: { companyId: strin
   const dashboardDefault = import.meta.env.VITE_APP_URL ?? "";
   const endpoint = ingestDefault.replace(/\/+$/, "");
   const dashboardOrigin = dashboardDefault.replace(/\/+$/, "");
+  const llmsUrl = dashboardOrigin ? `${dashboardOrigin}/llms.txt` : "/llms.txt";
   const sdkUrl = dashboardOrigin ? `${dashboardOrigin}/sdk.js` : "/sdk.js";
   const iosSdkZip = dashboardOrigin ? `${dashboardOrigin}/downloads/securetarget-ios-sdk.zip` : "/downloads/securetarget-ios-sdk.zip";
   const androidSdkZip = dashboardOrigin
@@ -165,6 +177,38 @@ sdk.onInstallAttribution { result ->
     return { webNpm, webScript, iosInit, iosDeepLink, androidInit, androidDeepLink, androidConversion };
   }, [companyId, endpoint, sdkUrl]);
 
+  const projectContext = useMemo(
+    () =>
+      [
+        "SecureTarget integration context",
+        "",
+        `companyId: ${companyId}`,
+        `ingest endpoint: ${endpoint}`,
+        "",
+        "Checklist:",
+        "1. Generate an API key in the API keys panel above (shown once).",
+        "2. Set x-api-key header on SDK / ingest requests.",
+        "3. Initialize the SDK with apiKey, companyId, and endpoint.",
+        "4. Verify events in the dashboard Events view.",
+        "",
+        `Public agent doc: ${llmsUrl}`,
+      ].join("\n"),
+    [companyId, endpoint, llmsUrl],
+  );
+
+  const openLlmsTxt = useCallback(() => {
+    window.open(llmsUrl, "_blank", "noopener,noreferrer");
+  }, [llmsUrl]);
+
+  const copyProjectContext = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(projectContext);
+      toast.success("Copied project context");
+    } catch {
+      toast.error("Could not copy");
+    }
+  }, [projectContext]);
+
   return (
     <div className={styles.root}>
       <section className={styles.config}>
@@ -199,6 +243,22 @@ sdk.onInstallAttribution { result ->
         </dl>
       </section>
 
+      <section className={styles.aiSection}>
+        <h3 className={styles.configTitle}>AI integration</h3>
+        <p className={styles.aiLead}>
+          Share stable docs and your project context with coding agents. API keys are never included — generate one in
+          the panel above.
+        </p>
+        <div className={styles.aiActions}>
+          <button type="button" className={styles.aiBtn} onClick={openLlmsTxt}>
+            Open llms.txt
+          </button>
+          <button type="button" className={styles.aiBtn} onClick={() => void copyProjectContext()}>
+            Copy project context
+          </button>
+        </div>
+      </section>
+
       <div className={styles.tabBar} role="tablist" aria-label="Integration platform">
         {PLATFORMS.map((p) => (
           <button
@@ -216,12 +276,7 @@ sdk.onInstallAttribution { result ->
 
       {platform === "web" ? (
         <ol className={styles.steps}>
-          <Step n={1} title="Generate an API key">
-            <p>
-              Use the <strong>API keys</strong> panel above. Save the full key once — only the prefix is shown later.
-              Never commit production keys to git; use env vars or server-side injection.
-            </p>
-          </Step>
+          <GenerateApiKeyStep n={1} />
           <Step n={2} title="Choose how to load the Web SDK">
             <p>
               <strong>Script tag</strong> — any HTML site or CMS; load <code>{sdkUrl}</code>.
@@ -267,7 +322,8 @@ sdk.onInstallAttribution { result ->
 
       {platform === "ios" ? (
         <ol className={styles.steps}>
-          <Step n={1} title="Download the iOS SDK">
+          <GenerateApiKeyStep n={1} />
+          <Step n={2} title="Download the iOS SDK">
             <p>Unzip and add the Swift sources to your Xcode project, or add the folder as a local Swift package.</p>
             <SdkDownload
               href={iosSdkZip}
@@ -275,33 +331,33 @@ sdk.onInstallAttribution { result ->
               hint="SecureTargetSDK.swift + README"
             />
           </Step>
-          <Step n={2} title="Add sources to your app">
+          <Step n={3} title="Add sources to your app">
             <p>
               Drag <code>SecureTargetSDK/SecureTargetSDK.swift</code> into your target, or use File → Add Package
               Dependencies → Add Local… and point at the unzipped folder.
             </p>
           </Step>
-          <Step n={3} title="Configure credentials">
+          <Step n={4} title="Configure credentials">
             <p>
               Use your API key, <code>companyId</code>, and ingest URL. Request App Tracking Transparency before reading
               IDFA if your policy requires it.
             </p>
             <CopyCodeBlock label="iOS init snippet" code={snippets.iosInit} />
           </Step>
-          <Step n={4} title="Bootstrap session on launch">
+          <Step n={5} title="Bootstrap session on launch">
             <p>
               Call <code>bootstrapSession()</code> early. The SDK persists <code>sessionId</code>, sends{" "}
               <code>x-session-id</code> on every event, and auto-fires a first-open <code>install</code> event once.
             </p>
           </Step>
-          <Step n={5} title="Handle universal links & deep links">
+          <Step n={6} title="Handle universal links & deep links">
             <p>
               Forward opened URLs so campaign params (<code>st_click_id</code>, <code>pid</code>, <code>c</code>) are
               recorded.
             </p>
             <CopyCodeBlock label="iOS deep link snippet" code={snippets.iosDeepLink} />
           </Step>
-          <Step n={6} title="Track conversions">
+          <Step n={7} title="Track conversions">
             <p>After login or purchase in your app:</p>
             <CopyCodeBlock
               label="iOS conversion snippet"
@@ -313,7 +369,7 @@ sdk.onInstallAttribution { result ->
 )`}
             />
           </Step>
-          <Step n={7} title="Verify install attribution">
+          <Step n={8} title="Verify install attribution">
             <p>
               Check{" "}
               <Link to={`/dashboard/${projectId}/events`} className={styles.inlineLink}>
@@ -335,7 +391,8 @@ sdk.onInstallAttribution { result ->
 
       {platform === "android" ? (
         <ol className={styles.steps}>
-          <Step n={1} title="Download the Android SDK">
+          <GenerateApiKeyStep n={1} />
+          <Step n={2} title="Download the Android SDK">
             <p>
               Unzip and copy the Kotlin sources into your app module. The zip includes a README with the Gradle
               dependency for Play Install Referrer.
@@ -346,30 +403,30 @@ sdk.onInstallAttribution { result ->
               hint="SecureTargetSdk.kt, InstallReferrerHelper.kt + README"
             />
           </Step>
-          <Step n={2} title="Add sources and Gradle dependency">
+          <Step n={3} title="Add sources and Gradle dependency">
             <p>
               Copy <code>src/main/java/com/securetarget/sdk/*.kt</code> into your app. Add{" "}
               <code>implementation &quot;com.android.installreferrer:installreferrer:2.2&quot;</code> to{" "}
               <code>app/build.gradle</code>.
             </p>
           </Step>
-          <Step n={3} title="Configure credentials">
+          <Step n={4} title="Configure credentials">
             <CopyCodeBlock label="Android init snippet" code={snippets.androidInit} />
           </Step>
-          <Step n={4} title="Bootstrap session on app start">
+          <Step n={5} title="Bootstrap session on app start">
             <p>
               <code>ensureSession()</code> calls <code>/v1/session/bootstrap</code>, reads the Install Referrer when
               available, and sends a first-open <code>install</code> event automatically.
             </p>
           </Step>
-          <Step n={5} title="Handle deep links">
+          <Step n={6} title="Handle deep links">
             <p>Pass the launch intent so <code>st_click_id</code> and campaign query params are captured.</p>
             <CopyCodeBlock label="Android deep link snippet" code={snippets.androidDeepLink} />
           </Step>
-          <Step n={6} title="Track conversions">
+          <Step n={7} title="Track conversions">
             <CopyCodeBlock label="Android conversion snippet" code={snippets.androidConversion} />
           </Step>
-          <Step n={7} title="Use Play Store tracking links">
+          <Step n={8} title="Use Play Store tracking links">
             <p>
               Set your Android store URL on a{" "}
               <Link to={`/dashboard/${projectId}/links`} className={styles.inlineLink}>
@@ -379,7 +436,7 @@ sdk.onInstallAttribution { result ->
               open.
             </p>
           </Step>
-          <Step n={8} title="Verify events">
+          <Step n={9} title="Verify events">
             <p>
               Open{" "}
               <Link to={`/dashboard/${projectId}/events`} className={styles.inlineLink}>

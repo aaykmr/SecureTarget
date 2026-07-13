@@ -4,6 +4,13 @@
   gap: var(--space-5);
 }
 
+.prefixHint {
+  margin: 0;
+  font-size: var(--text-caption-sm);
+  line-height: 1.45;
+  color: var(--color-fg-subtle);
+}
+
 .keyList {
   display: flex;
   flex-direction: column;

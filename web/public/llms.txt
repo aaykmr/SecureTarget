@@ -1,0 +1,85 @@
+# SecureTarget
+
+SecureTarget is an attribution and event ingest platform. Apps send events to the ingest API; the dashboard provides projects, API keys, campaign links, and analytics.
+
+## Dashboard (human setup)
+
+1. Register at the dashboard SPA (example: https://eventiqn.trusttargets.com/register).
+2. Create a project — note the project-specific `companyId`.
+3. Generate an API key in the project overview **API keys** panel. The full key is shown once; only a prefix is stored afterward.
+4. Use the Integration panel for Web, iOS, and Android setup steps.
+
+## Shared SDK configuration
+
+Every platform needs:
+
+- `apiKey` — from dashboard API keys (`x-api-key` header on ingest requests)
+- `companyId` — project identifier from the dashboard
+- `endpoint` — ingest API base URL (example production: https://api.eventiqn.trusttargets.com)
+
+Never commit production API keys to source control. Use environment variables or server-side injection.
+
+## Web SDK
+
+Hosted script: `/sdk.js` on the dashboard origin (example: https://eventiqn.trusttargets.com/sdk.js).
+
+npm package: `@securetarget/web-sdk`
+
+```javascript
+import { init } from "@securetarget/web-sdk";
+
+const st = init({
+  apiKey: "YOUR_API_KEY",
+  companyId: "YOUR_COMPANY_ID",
+  endpoint: "https://api.eventiqn.trusttargets.com",
+});
+```
+
+Script tag: load `/sdk.js`, then `window.SecureTarget.init({ apiKey, companyId, endpoint })`.
+
+## iOS SDK
+
+Download: `/downloads/securetarget-ios-sdk.zip`
+
+Initialize `SecureTargetSDK` with apiKey, companyId, endpoint URL. Call `bootstrapSession()` on launch. Forward deep links via `handleDeepLink(url:)`.
+
+## Android SDK
+
+Download: `/downloads/securetarget-android-sdk.zip`
+
+Add Kotlin sources and `com.android.installreferrer:installreferrer:2.2`. Initialize `SecureTargetSdk` with apiKey, companyId, endpoint. Call `ensureSession()` in `Application.onCreate`. Pass intents to `handleDeepLink`.
+
+## Ingest API (SDK / server)
+
+Base URL: project-specific ingest endpoint (see dashboard Integration panel).
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | /healthz | Health check |
+| POST | /v1/session/bootstrap | Create or resume session |
+| POST | /v1/record | Send events (login, install, conversion, etc.) |
+
+Headers: `x-api-key`, `x-session-id` (after bootstrap), `Content-Type: application/json`.
+
+## Dashboard API (authenticated)
+
+Base URL: same host as ingest in typical deployments.
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | /v1/auth/register | Create account |
+| POST | /v1/auth/login | Sign in (Bearer token) |
+| GET | /v1/auth/me | Current user |
+| GET | /v1/projects | List projects |
+| POST | /v1/projects | Create project |
+| GET | /v1/projects/:id | Project details |
+| GET | /v1/projects/:id/api-keys | List key prefixes |
+| POST | /v1/projects/:id/api-keys | Generate key (returns fullKey once) |
+| DELETE | /v1/projects/:id/api-keys/:keyId | Revoke key |
+
+## Agent checklist
+
+1. Ask the user for `companyId` and ingest `endpoint` from their dashboard (or use Integration → Copy project context).
+2. Remind them to generate an API key in the dashboard — do not invent keys.
+3. Wire SDK init with placeholders replaced by real values.
+4. Verify events appear under the project Events view after a test `record` or `login`.

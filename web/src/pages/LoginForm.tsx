@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import styles from "./LoginForm.module.scss";
 
-export function LoginForm({ registered }: { registered?: boolean }) {
+export function LoginForm({ registered, reset }: { registered?: boolean; reset?: boolean }) {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +34,7 @@ export function LoginForm({ registered }: { registered?: boolean }) {
     <Card className={styles.card}>
       <form onSubmit={onSubmit} className={styles.form}>
         {registered && <p className={styles.bannerSuccess}>Account created. Sign in below.</p>}
+        {reset && <p className={styles.bannerSuccess}>Password updated. Sign in with your new password.</p>}
         {error && <p className={styles.bannerError}>{error}</p>}
         <Input name="email" type="email" label="Email" required autoComplete="email" />
         <Input
@@ -43,6 +44,11 @@ export function LoginForm({ registered }: { registered?: boolean }) {
           required
           autoComplete="current-password"
         />
+        <p className={styles.forgotRow}>
+          <Link to="/forgot-password" className={styles.forgotLink}>
+            Forgot password?
+          </Link>
+        </p>
         <Button type="submit" disabled={pending} variant="primary" fullWidth>
           {pending ? "Signing in…" : "Sign in"}
         </Button>

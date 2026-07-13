@@ -1,13 +1,12 @@
 import { Analytics01Icon } from "@hugeicons/core-free-icons";
 import { Link, useSearchParams } from "react-router-dom";
 import { HugeIcon } from "@/components/huge-icon";
-import { LoginForm } from "./LoginForm";
-import styles from "./LoginPage.module.scss";
+import { ResetPasswordForm } from "./ResetPasswordForm";
+import styles from "./ResetPasswordPage.module.scss";
 
-export function LoginPage() {
+export function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
-  const registered = searchParams.get("registered");
-  const reset = searchParams.get("reset");
+  const token = searchParams.get("token");
 
   return (
     <div className={styles.root}>
@@ -18,14 +17,13 @@ export function LoginPage() {
         SecureTarget
       </Link>
       <div className={styles.intro}>
-        <h1 className={styles.title}>Sign in</h1>
-        <p className={styles.subtitle}>Access your SecureTarget dashboard and API keys.</p>
+        <h1 className={styles.title}>Reset password</h1>
+        <p className={styles.subtitle}>Choose a new password for your account.</p>
       </div>
-      <LoginForm registered={Boolean(registered)} reset={Boolean(reset)} />
+      <ResetPasswordForm token={token} />
       <p className={styles.footer}>
-        No account?{" "}
-        <Link to="/register" className={styles.footerLink}>
-          Register
+        <Link to="/login" className={styles.footerLink}>
+          Back to sign in
         </Link>
       </p>
     </div>
