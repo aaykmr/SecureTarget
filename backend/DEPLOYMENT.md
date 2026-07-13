@@ -194,8 +194,10 @@ curl -sf http://10.0.1.20:8080/healthz && echo OK
 GitHub Actions SSHs to the **nginx EC2** (public), then through to this **private app** host.
 
 ```bash
-echo 'ubuntu ALL=(ALL) NOPASSWD: /bin/systemctl restart securetarget-backend' | sudo tee /etc/sudoers.d/securetarget-deploy
+echo 'ubuntu ALL=(ALL) NOPASSWD: /bin/systemctl restart securetarget-backend, /bin/systemctl daemon-reload, /bin/systemctl enable securetarget-backend, /usr/bin/cp /home/ubuntu/SecureTarget/backend/deploy/securetarget-backend.service /etc/systemd/system/securetarget-backend.service' | sudo tee /etc/sudoers.d/securetarget-deploy
 ```
+
+After the EventIQN rebrand, the systemd unit must run `@eventiqn/backend` (see `backend/deploy/securetarget-backend.service`). The deploy script copies that file on each deploy; widen sudoers as above if `cp` or `daemon-reload` was not allowed before.
 
 Add the deploy SSH **public key** to `~/.ssh/authorized_keys` on the app EC2.
 
