@@ -1,0 +1,42 @@
+name: Test SecureTarget backend
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "backend/**"
+      - "packages/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/test-backend.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - "packages/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/test-backend.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test backend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test

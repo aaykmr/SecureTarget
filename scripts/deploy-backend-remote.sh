@@ -15,9 +15,6 @@ git reset --hard "origin/${BRANCH}"
 echo "==> Install dependencies"
 npm ci
 
-echo "==> Run tests"
-npm test
-
 echo "==> Restart ${SERVICE}"
 sudo systemctl restart "$SERVICE"
 

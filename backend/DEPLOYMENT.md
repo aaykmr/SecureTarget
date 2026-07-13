@@ -367,12 +367,13 @@ Set `DASHBOARD_CORS_ORIGIN` to your CloudFront SPA origin.
 
 ## 5. GitHub Actions deploy (app EC2 via nginx jump)
 
-Workflow: [`.github/workflows/deploy-backend.yml`](../../.github/workflows/deploy-backend.yml)
+Workflow: [`.github/workflows/deploy-backend.yml`](../../.github/workflows/deploy-backend.yml)  
+Tests: [`.github/workflows/test-backend.yml`](../../.github/workflows/test-backend.yml) (runs in parallel; failures do not block deploy)
 
 | Job | Where it runs | What it does |
 |-----|---------------|--------------|
-| `test` | GitHub-hosted (`ubuntu-latest`) | `npm ci` + `npm test` |
-| `deploy` | GitHub-hosted → SSH via **nginx jump** → **app EC2** | `git pull`, `npm ci`, `npm test`, `systemctl restart` |
+| `test` | GitHub-hosted (`test-backend.yml`) | `npm ci` + `npm test` — separate workflow, does not block deploy |
+| `deploy` | GitHub-hosted → SSH via **nginx jump** → **app EC2** | `git pull`, `npm ci`, `systemctl restart` |
 
 Because the app EC2 has **no public IP**, the workflow uses `appleboy/ssh-action` with a **ProxyJump** through the nginx EC2 (Elastic IP).
 

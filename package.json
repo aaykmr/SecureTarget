@@ -10,7 +10,7 @@
     "site"
   ],
   "scripts": {
-    "test": "tsx --test backend/test/**/*.test.ts",
+    "test": "sh -c 'tsx --test backend/test/*.test.ts'",
     "test:pg": "npm run db:up && node scripts/wait-for-postgres.mjs && tsx --test backend/test/apiKeyResolvePg.test.ts",
     "db:up": "docker compose up -d --wait postgres redis",
     "db:down": "docker compose down",
