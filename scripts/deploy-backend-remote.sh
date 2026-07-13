@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run on the app EC2 (manually or via GitHub Actions SSH).
+# Run on the app EC2 (manually or via GitHub Actions SSH through nginx jump host).
 set -euo pipefail
 
 DEPLOY_PATH="${BACKEND_DEPLOY_PATH:-/home/ubuntu/SecureTarget}"

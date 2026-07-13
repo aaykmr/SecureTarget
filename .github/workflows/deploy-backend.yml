@@ -46,7 +46,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Deploy over SSH
+      - name: Deploy over SSH (via nginx jump host)
         uses: appleboy/ssh-action@v1.2.0
         env:
           BACKEND_DEPLOY_PATH: ${{ vars.BACKEND_DEPLOY_PATH || '/home/ubuntu/SecureTarget' }}
@@ -57,6 +57,10 @@ jobs:
           username: ${{ secrets.BACKEND_EC2_USER }}
           key: ${{ secrets.BACKEND_EC2_SSH_KEY }}
           port: ${{ secrets.BACKEND_EC2_SSH_PORT || 22 }}
+          proxy_host: ${{ secrets.BACKEND_PROXY_HOST }}
+          proxy_username: ${{ secrets.BACKEND_PROXY_USER }}
+          proxy_key: ${{ secrets.BACKEND_PROXY_KEY }}
+          proxy_port: ${{ secrets.BACKEND_PROXY_PORT || 22 }}
           script_stop: true
           envs: BACKEND_DEPLOY_PATH,BACKEND_DEPLOY_BRANCH,BACKEND_SYSTEMD_SERVICE
           script: |
