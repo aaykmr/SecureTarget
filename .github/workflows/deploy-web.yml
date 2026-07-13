@@ -1,4 +1,4 @@
-name: Deploy SecureTarget web
+name: Deploy EventIQN web
 
 on:
   push:

@@ -1,4 +1,4 @@
-name: Test SecureTarget backend
+name: Test EventIQN backend
 
 on:
   push:

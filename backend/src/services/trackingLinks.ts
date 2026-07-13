@@ -13,6 +13,7 @@ export interface TrackingLinkRow {
   android_url: string | null;
   web_url: string | null;
   default_params_json: string | null;
+  campaign_presets_json: string | null;
   created_at: string;
 }
 
@@ -283,6 +284,42 @@ export async function createTrackingLink(
     input.defaultParams ? JSON.stringify(input.defaultParams) : null,
   );
   return db.prepare(`SELECT * FROM tracking_links WHERE id = ?`).get(id) as TrackingLinkRow;
+}
+
+export async function getTrackingLinkForCompany(
+  db: Database | pg.Pool,
+  companyId: string,
+  linkId: string,
+): Promise<TrackingLinkRow | undefined> {
+  if (isPgConn(db)) {
+    return pgQueryOne<TrackingLinkRow>(db, `SELECT * FROM tracking_links WHERE id = $1 AND company_id = $2`, [
+      linkId,
+      companyId,
+    ]);
+  }
+  return db.prepare(`SELECT * FROM tracking_links WHERE id = ? AND company_id = ?`).get(linkId, companyId) as
+    | TrackingLinkRow
+    | undefined;
+}
+
+export async function updateTrackingLinkCampaignPresets(
+  db: Database | pg.Pool,
+  companyId: string,
+  linkId: string,
+  presetsJson: string,
+): Promise<boolean> {
+  if (isPgConn(db)) {
+    const res = await db.query(`UPDATE tracking_links SET campaign_presets_json = $1 WHERE id = $2 AND company_id = $3`, [
+      presetsJson,
+      linkId,
+      companyId,
+    ]);
+    return (res.rowCount ?? 0) > 0;
+  }
+  const res = db
+    .prepare(`UPDATE tracking_links SET campaign_presets_json = ? WHERE id = ? AND company_id = ?`)
+    .run(presetsJson, linkId, companyId);
+  return res.changes > 0;
 }
 
 export async function deleteTrackingLink(

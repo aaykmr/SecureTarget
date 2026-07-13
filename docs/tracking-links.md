@@ -1,6 +1,6 @@
 # Tracking links
 
-SecureTarget provides OneLink-style campaign URLs that record clicks **before** install.
+EventIQN provides OneLink-style campaign URLs that record clicks **before** install.
 
 ## Create a link
 

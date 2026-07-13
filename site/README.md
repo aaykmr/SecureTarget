@@ -13,7 +13,7 @@ Open http://localhost:5173
 ## Build
 
 ```bash
-npm run build --workspace @securetarget/site
+npm run build --workspace @eventiqn/site
 ```
 
 Output: `site/dist/`

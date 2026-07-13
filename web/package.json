@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "npm run build:browser --workspace @securetarget/web-sdk && node ../scripts/build-sdk-zips.mjs",
-    "prebuild": "npm run build:browser --workspace @securetarget/web-sdk && node ../scripts/build-sdk-zips.mjs",
+    "predev": "npm run build:browser --workspace @eventiqn/web-sdk && node ../scripts/build-sdk-zips.mjs",
+    "prebuild": "npm run build:browser --workspace @eventiqn/web-sdk && node ../scripts/build-sdk-zips.mjs",
     "dev": "vite",
     "build": "tsc && vite build && cp dist/index.html dist/404.html",
     "preview": "vite preview"
@@ -13,7 +13,7 @@
   "dependencies": {
     "@hugeicons/core-free-icons": "^4.2.2",
     "@hugeicons/react": "^1.1.9",
-    "@securetarget/shared": "*",
+    "@eventiqn/shared": "*",
     "clsx": "^2.1.1",
     "next-themes": "^0.4.6",
     "react": "^19.0.0",

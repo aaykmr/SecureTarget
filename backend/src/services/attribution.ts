@@ -1,13 +1,13 @@
 import crypto from "node:crypto";
 import type { Database } from "better-sqlite3";
 import type pg from "pg";
-import { hashToken, tokenSaltForCompany } from "@securetarget/shared";
+import { hashToken, tokenSaltForCompany } from "@eventiqn/shared";
 import type { ConversionEvent, LoginEvent, RecordEvent } from "../../../packages/contracts/src/events.js";
 import { isPgConn, pgExecute, pgQueryOne } from "../db/ingestDb.js";
 
 const DEFAULT_WINDOW_HOURS = 24 * 7;
 
-export { hashToken, tokenSaltForCompany } from "@securetarget/shared";
+export { hashToken, tokenSaltForCompany } from "@eventiqn/shared";
 
 export async function storeClick(db: Database | pg.Pool, event: RecordEvent): Promise<void> {
   const salt = tokenSaltForCompany(event.companyId);

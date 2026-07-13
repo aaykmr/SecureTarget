@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const schemaPath = resolve(__dirname, "device-schema.sql");
 
-export function createDeviceDb(dbPath = "securetarget-device.sqlite"): Database.Database {
+export function createDeviceDb(dbPath = "eventiqn-device.sqlite"): Database.Database {
   const db = new Database(dbPath);
   const schemaSql = readFileSync(schemaPath, "utf8");
   db.exec(schemaSql);

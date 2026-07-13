@@ -97,7 +97,7 @@ export function LandingPage() {
         <div className={styles.headerInner}>
           <Link to="/" className={styles.logo}>
             <HugeIcon icon={Shield01Icon} size={22} className={styles.logoIcon} />
-            SecureTarget
+            EventIQN
           </Link>
           <nav className={styles.headerNav}>
             <a href="#features" className={styles.headerLink}>
@@ -129,7 +129,7 @@ export function LandingPage() {
                   Know where every install <span className={styles.heroAccent}>comes from</span>
                 </h1>
                 <p className={styles.heroLead}>
-                  SecureTarget is your own attribution layer — campaign links, install matching, and a dashboard
+                  EventIQN is your own attribution layer — campaign links, install matching, and a dashboard
                   for organic vs paid — without handing user data to an external MMP.
                 </p>
                 <div className={styles.heroActions}>
@@ -258,7 +258,7 @@ export function LandingPage() {
               <div className={styles.footerTop}>
                 <span className={styles.footerBrand}>
                   <HugeIcon icon={Shield01Icon} size={18} />
-                  SecureTarget
+                  EventIQN
                 </span>
                 <nav className={styles.footerNav} aria-label="Legal">
                   <Link to="/privacy" className={styles.footerLink}>

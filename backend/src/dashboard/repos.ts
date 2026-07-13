@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { compareSync, hashSync } from "bcryptjs";
 import type pg from "pg";
-import { generateApiKey, hashApiKey } from "@securetarget/shared";
+import { generateApiKey, hashApiKey } from "@eventiqn/shared";
 
 function pepper(): string {
   return (

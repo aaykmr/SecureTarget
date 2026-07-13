@@ -1,4 +1,4 @@
-# SecureTarget (Privacy Attribution SDK v1)
+# EventIQN (Privacy Attribution SDK v1)
 
 Privacy-first attribution MVP with:
 
@@ -27,9 +27,9 @@ Create your local environment file:
 cp .env.example .env
 ```
 
-Edit `.env` and set at least `NEXTAUTH_SECRET`, `API_KEY_PEPPER`, and paths/URLs as needed. The dashboard and ingest **must use the same** `SECURETARGET_DB_PATH` and `API_KEY_PEPPER` so issued API keys validate on ingest.
+Edit `.env` and set at least `NEXTAUTH_SECRET`, `API_KEY_PEPPER`, and paths/URLs as needed. The dashboard and ingest **must use the same** `EVENTIQN_DB_PATH` and `API_KEY_PEPPER` so issued API keys validate on ingest.
 
-Relative `SECURETARGET_DB_PATH` values (for example `securetarget.sqlite`) are resolved from the **monorepo root**, not from `web/` or `backend/`, so both processes share one file.
+Relative `EVENTIQN_DB_PATH` values (for example `eventiqn.sqlite`) are resolved from the **monorepo root**, not from `web/` or `backend/`, so both processes share one file.
 
 When generating API keys, the dashboard hashes using **`web/lib/apiKeyPepper.ts`** so the pepper matches ingest even when Next bundles workspace packages (do not rely on `process.env` inside `packages/shared` alone from server actions).
 
@@ -54,7 +54,7 @@ Set `NEXT_PUBLIC_APP_URL` to the dashboard’s public origin (e.g. `http://local
 The Web SDK is bundled into a static file served by the dashboard:
 
 - **URL:** `https://<your-dashboard-domain>/sdk.js`
-- **Global:** `window.SecureTarget` with `init(config)` and `SecureTargetClient` (same as the npm package).
+- **Global:** `window.EventIQN` with `init(config)` and `EventIQNClient` (same as the npm package).
 
 The file is generated before `next dev` / `next build` via `npm run build:sdk-browser` (wired as `predev` / `prebuild` on the `web` workspace). Customer sites can load it with a `<script src="…/sdk.js">` tag; see the project page in the dashboard for a copy-paste example.
 
@@ -62,8 +62,8 @@ The file is generated before `next dev` / `next build` via `npm run build:sdk-br
 
 iOS and Android source SDKs are packaged as zip files served by the dashboard:
 
-- **iOS:** `/downloads/securetarget-ios-sdk.zip`
-- **Android:** `/downloads/securetarget-android-sdk.zip`
+- **iOS:** `/downloads/eventiqn-ios-sdk.zip`
+- **Android:** `/downloads/eventiqn-android-sdk.zip`
 
 Regenerate with `npm run build:sdk-zips` from the repo root (also runs on `web` predev/prebuild). Each archive includes source files and a short README.
 
@@ -76,15 +76,15 @@ Set `INGEST_DEBUG=1` in `.env` and restart ingest. Logs use prefix `[ingest:api-
 ## Run backend (ingest)
 
 ```bash
-npm --workspace @securetarget/backend run start
+npm --workspace @eventiqn/backend run start
 ```
 
 Backend defaults:
 
 - Port: `8080` (override with `PORT`)
-- SQLite DB file: `securetarget.sqlite` in project root (override with `SECURETARGET_DB_PATH`)
+- SQLite DB file: `eventiqn.sqlite` in project root (override with `EVENTIQN_DB_PATH`)
 - Environment variables are loaded automatically from `.env`
-- Optional override: set `SECURETARGET_ENV_PATH` to load a different env file path
+- Optional override: set `EVENTIQN_ENV_PATH` to load a different env file path
 
 ### Health check
 

@@ -17,7 +17,7 @@ export function LegalDocumentLayout({
       <header className={styles.header}>
         <Link to="/" className={styles.logo}>
           <HugeIcon icon={Shield01Icon} size={20} className={styles.logoIcon} />
-          SecureTarget
+          EventIQN
         </Link>
         <Link to="/" className={styles.backLink}>
           Back to home
@@ -39,7 +39,7 @@ export function LegalDocumentLayout({
           <Link to="/privacy">Privacy Policy</Link>
           <Link to="/terms">Terms &amp; Conditions</Link>
         </nav>
-        <p className={styles.footerCopy}>&copy; {new Date().getFullYear()} SecureTarget. All rights reserved.</p>
+        <p className={styles.footerCopy}>&copy; {new Date().getFullYear()} EventIQN. All rights reserved.</p>
       </footer>
     </div>
   );

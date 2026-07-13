@@ -6,7 +6,7 @@ export function PrivacyPage() {
       <section>
         <h2>1. Introduction</h2>
         <p>
-          SecureTarget (&quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) provides privacy-first install and campaign
+          EventIQN (&quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) provides privacy-first install and campaign
           attribution software, including a dashboard, ingest API, and client SDKs. This Privacy Policy explains what
           information we process when you use our website, dashboard, and attribution services, and the choices
           available to you.
@@ -15,7 +15,7 @@ export function PrivacyPage() {
 
       <section>
         <h2>2. Information we collect</h2>
-        <p>Depending on how you use SecureTarget, we may process:</p>
+        <p>Depending on how you use EventIQN, we may process:</p>
         <ul>
           <li>
             <strong>Account information</strong> — name, email address, and authentication credentials when you
@@ -48,7 +48,7 @@ export function PrivacyPage() {
         <h2>3. How we use information</h2>
         <p>We use collected information to:</p>
         <ul>
-          <li>Provide, operate, and improve the SecureTarget platform;</li>
+          <li>Provide, operate, and improve the EventIQN platform;</li>
           <li>Authenticate users and secure accounts;</li>
           <li>Match ad clicks to installs and report attribution outcomes to your dashboard;</li>
           <li>Process subscriptions and enforce plan limits where applicable;</li>
@@ -63,7 +63,7 @@ export function PrivacyPage() {
       <section>
         <h2>4. Your responsibilities as a customer</h2>
         <p>
-          If you integrate SecureTarget into your apps, you are responsible for providing appropriate privacy notices
+          If you integrate EventIQN into your apps, you are responsible for providing appropriate privacy notices
           to your end users, obtaining any required consents, and configuring the SDK to collect only data permitted
           under your policies and applicable law. Do not send unnecessary personally identifiable information in event
           payloads.
@@ -91,7 +91,7 @@ export function PrivacyPage() {
       <section>
         <h2>7. International transfers</h2>
         <p>
-          If you access SecureTarget from outside the country where our infrastructure is hosted, your information may
+          If you access EventIQN from outside the country where our infrastructure is hosted, your information may
           be transferred to and processed in other jurisdictions. We take steps to ensure appropriate safeguards where
           required by law.
         </p>
@@ -119,7 +119,7 @@ export function PrivacyPage() {
         <h2>10. Contact</h2>
         <p>
           Questions about this Privacy Policy or our data practices can be sent to{" "}
-          <a href="mailto:privacy@securetarget.app">privacy@securetarget.app</a>.
+          <a href="mailto:privacy@eventiqn.trusttargets.com">privacy@eventiqn.trusttargets.com</a>.
         </p>
       </section>
     </LegalDocumentLayout>

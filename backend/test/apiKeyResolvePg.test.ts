@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { config as loadEnv } from "dotenv";
 import { resolve } from "node:path";
-import { hashApiKey, generateApiKey } from "@securetarget/shared";
+import { hashApiKey, generateApiKey } from "@eventiqn/shared";
 import { getPostgresPool, initPostgresSchema, closePostgresPool } from "../src/db/postgres.js";
 import { resolveCompanyIdFromApiKeyPg } from "../src/services/apiKeyAuth.js";
 

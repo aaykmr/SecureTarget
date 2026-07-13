@@ -61,8 +61,8 @@ export class IngestDb {
       await initPostgresSchema();
       return new IngestDb({ mode: "postgres", pool });
     }
-    const dbPath = resolveDbPath(process.env.SECURETARGET_DB_PATH ?? "securetarget.sqlite");
-    const deviceDbPath = resolveDbPath(process.env.SECURETARGET_DEVICE_DB_PATH ?? "securetarget-device.sqlite");
+    const dbPath = resolveDbPath(process.env.EVENTIQN_DB_PATH ?? "eventiqn.sqlite");
+    const deviceDbPath = resolveDbPath(process.env.EVENTIQN_DEVICE_DB_PATH ?? "eventiqn-device.sqlite");
     return new IngestDb({
       mode: "sqlite",
       customer: createDb(dbPath),

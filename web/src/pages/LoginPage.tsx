@@ -15,11 +15,11 @@ export function LoginPage() {
         <span className={styles.brandIcon}>
           <HugeIcon icon={Analytics01Icon} size={20} />
         </span>
-        SecureTarget
+        EventIQN
       </Link>
       <div className={styles.intro}>
         <h1 className={styles.title}>Sign in</h1>
-        <p className={styles.subtitle}>Access your SecureTarget dashboard and API keys.</p>
+        <p className={styles.subtitle}>Access your EventIQN dashboard and API keys.</p>
       </div>
       <LoginForm registered={Boolean(registered)} reset={Boolean(reset)} />
       <p className={styles.footer}>

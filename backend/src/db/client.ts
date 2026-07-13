@@ -84,7 +84,7 @@ function migrateInstallAttributionTables(db: Database.Database): void {
   addColumnIfMissing(db, "tracking_links", "campaign_presets_json", "TEXT");
 }
 
-export function createDb(dbPath = "securetarget.sqlite"): Database.Database {
+export function createDb(dbPath = "eventiqn.sqlite"): Database.Database {
   const db = new Database(dbPath);
   const schemaSql = readFileSync(schemaPath, "utf8");
   db.exec(schemaSql);

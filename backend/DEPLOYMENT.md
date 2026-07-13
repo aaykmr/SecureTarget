@@ -1,4 +1,4 @@
-# SecureTarget backend — production (3× EC2)
+# EventIQN backend — production (3× EC2)
 
 The backend serves ingest (`/v1/record`, session bootstrap, clicks, SKAN, etc.) and the dashboard API (`/v1/auth/*`, `/v1/projects/*`). With `DATABASE_URL` set, all data lives in **Postgres**. **Redis** runs alongside Postgres for caching (wire up in backend as needed).
 
@@ -360,10 +360,21 @@ GitHub Actions **does not** deploy nginx config — only certbot renewal and man
 | GET | `/v1/projects/:id` |
 | GET/POST | `/v1/projects/:id/api-keys` |
 | DELETE | `/v1/projects/:id/api-keys/:keyId` |
+| GET | `/v1/projects/:id/events` |
+| GET/POST | `/v1/projects/:id/links` |
+| DELETE | `/v1/projects/:id/links/:linkId` |
+| POST/DELETE | `/v1/projects/:id/links/:linkId/presets[/:presetId]` |
+| GET/PUT | `/v1/projects/:id/settings` |
+| GET | `/v1/projects/:id/campaigns/summary` |
+| GET | `/v1/projects/:id/attribution/installs` |
+| GET | `/v1/projects/:id/skan/postbacks` |
 
 Set `DASHBOARD_CORS_ORIGIN` to your CloudFront SPA origin.
 
 ---
+
+> **Note:** Production EC2 paths, systemd unit names (`securetarget-backend`), env file (`/etc/securetarget.env`), and nginx config filenames predate the EventIQN product rebrand and remain unchanged on live hosts.
+
 
 ## 5. GitHub Actions deploy (app EC2 via nginx jump)
 
@@ -434,7 +445,7 @@ npm run dev:backend
 npm run dev:web
 ```
 
-- `DATABASE_URL=postgres://securetarget:securetarget@localhost:5433/securetarget`
+- `DATABASE_URL=postgres://eventiqn:eventiqn@localhost:5433/eventiqn`
 - `REDIS_URL=redis://localhost:6380`
 
 ---

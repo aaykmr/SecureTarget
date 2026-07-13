@@ -12,7 +12,7 @@ import { handleDashboardApi, isDashboardPath } from "./dashboard/router.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const envPath = process.env.SECURETARGET_ENV_PATH ?? resolve(__dirname, "../../.env");
+const envPath = process.env.EVENTIQN_ENV_PATH ?? resolve(__dirname, "../../.env");
 loadEnv({ path: envPath });
 
 const ingestDb = await IngestDb.open();
@@ -133,6 +133,6 @@ const server = createServer(async (req, res) => {
 server.listen(port, () => {
   // eslint-disable-next-line no-console
   console.log(
-    `SecureTarget backend listening on :${port} (data: ${ingestDb.mode === "postgres" ? "postgres" : "sqlite"})`,
+    `EventIQN backend listening on :${port} (data: ${ingestDb.mode === "postgres" ? "postgres" : "sqlite"})`,
   );
 });

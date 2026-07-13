@@ -6,27 +6,20 @@
 - **Projects**: list, create, get project
 - **API keys**: list, create (rotate), revoke
 - **Pages**: landing, login, register, privacy, terms, projects list, project overview + integration snippets
+- **Analytics**: campaigns summary, install attribution log, SDK events explorer, tracking links, SKAN postbacks, app settings
 - **Deploy**: static `dist/` → S3 + CloudFront (see `DEPLOYMENT.md`)
 
-## Stubbed (UI placeholder, API not wired)
+## Remaining follow-ups
 
-These routes render a “coming soon” panel until backend endpoints are ported from the old `web/lib/repos.ts`:
-
-- `/dashboard/:id/campaigns`
-- `/dashboard/:id/attribution`
-- `/dashboard/:id/links`
-- `/dashboard/:id/events`
-- `/dashboard/:id/skan`
-- `/dashboard/:id/settings/apps`
-
-## Backend follow-ups
-
-1. Port remaining dashboard repos to `backend/src/dashboard/repos.ts` + `router.ts` (events, links, campaigns, settings UI)
-2. Move Cashfree webhook from old Next route to backend
+- Cashfree billing UI + webhook on backend (was on old Next dashboard)
+- Link campaign preset add/delete UI (API wired; basic list display on links page)
+- Password reset email delivery (API stubs return 501 for token reset)
 
 ## Data storage
 
 When `DATABASE_URL` is set (local Docker or EC2 prod), **all** backend data uses Postgres: dashboard, ingest events, sessions, clicks, and device matching. SQLite is only used when `DATABASE_URL` is unset (unit tests).
+
+Dashboard analytics endpoints require Postgres (`pgPool`); they are not available in SQLite-only test mode.
 
 ## Removed
 

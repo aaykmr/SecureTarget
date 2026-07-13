@@ -5,7 +5,7 @@ import {
   getApiKeyPepper,
   hashApiKey,
   isCashfreeBillingEnforced,
-} from "@securetarget/shared";
+} from "@eventiqn/shared";
 
 function ingestDebugEnabled(): boolean {
   const v = process.env.INGEST_DEBUG;
@@ -152,7 +152,7 @@ export function resolveCompanyIdFromApiKey(db: Database, apiKeyHeader: string): 
   } else {
     logIngestDebug("no row for hash (pepper/db mismatch or wrong key)", {
       tableCounts: counts,
-      hint: "Ensure SECURETARGET_DB_PATH matches dashboard and API_KEY_PEPPER matches when the key was created"
+      hint: "Ensure EVENTIQN_DB_PATH matches dashboard and API_KEY_PEPPER matches when the key was created"
     });
 
     const storedPrefix = trimmed.slice(0, 10);

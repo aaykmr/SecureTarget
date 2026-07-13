@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createDb } from "../src/db/client.js";
 import { resolveCompanyIdFromApiKey } from "../src/services/apiKeyAuth.js";
-import { hashApiKey, generateApiKey } from "@securetarget/shared";
+import { hashApiKey, generateApiKey } from "@eventiqn/shared";
 import crypto from "node:crypto";
 
 test("resolveCompanyIdFromApiKey returns company for stored hash", () => {

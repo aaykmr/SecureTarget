@@ -7,7 +7,7 @@ export function TermsPage() {
       <section>
         <h2>1. Agreement</h2>
         <p>
-          These Terms &amp; Conditions (&quot;Terms&quot;) govern your access to and use of the SecureTarget website,
+          These Terms &amp; Conditions (&quot;Terms&quot;) govern your access to and use of the EventIQN website,
           dashboard, APIs, SDKs, and related services (collectively, the &quot;Service&quot;). By creating an account,
           accessing the Service, or using our software, you agree to these Terms. If you do not agree, do not use the
           Service.
@@ -25,7 +25,7 @@ export function TermsPage() {
 
       <section>
         <h2>3. Permitted use</h2>
-        <p>You may use SecureTarget only for lawful purposes and in accordance with these Terms. You agree not to:</p>
+        <p>You may use EventIQN only for lawful purposes and in accordance with these Terms. You agree not to:</p>
         <ul>
           <li>Use the Service to collect or process data in violation of applicable privacy or marketing laws;</li>
           <li>Reverse engineer, scrape, or attempt to extract source code except where permitted by law;</li>
@@ -57,7 +57,7 @@ export function TermsPage() {
       <section>
         <h2>6. Intellectual property</h2>
         <p>
-          SecureTarget and its licensors retain all rights in the Service, including software, documentation, branding,
+          EventIQN and its licensors retain all rights in the Service, including software, documentation, branding,
           and dashboards. You retain ownership of your app data and content you submit. You grant us a limited license
           to host, process, and display your data solely to provide and improve the Service.
         </p>
@@ -84,7 +84,7 @@ export function TermsPage() {
       <section>
         <h2>9. Limitation of liability</h2>
         <p>
-          TO THE MAXIMUM EXTENT PERMITTED BY LAW, SECURETARGET AND ITS AFFILIATES WILL NOT BE LIABLE FOR ANY INDIRECT,
+          TO THE MAXIMUM EXTENT PERMITTED BY LAW, EVENTIQN AND ITS AFFILIATES WILL NOT BE LIABLE FOR ANY INDIRECT,
           INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS, REVENUE, DATA, OR GOODWILL,
           ARISING FROM YOUR USE OF THE SERVICE. OUR TOTAL LIABILITY FOR ANY CLAIM RELATING TO THE SERVICE IS LIMITED TO
           THE AMOUNT YOU PAID US IN THE TWELVE (12) MONTHS BEFORE THE EVENT GIVING RISE TO THE CLAIM, OR ONE HUNDRED US
@@ -113,9 +113,9 @@ export function TermsPage() {
       <section>
         <h2>12. Governing law and contact</h2>
         <p>
-          These Terms are governed by the laws applicable in the jurisdiction where SecureTarget operates, without regard
+          These Terms are governed by the laws applicable in the jurisdiction where EventIQN operates, without regard
           to conflict-of-law principles. Questions about these Terms may be sent to{" "}
-          <a href="mailto:legal@securetarget.app">legal@securetarget.app</a>.
+          <a href="mailto:legal@eventiqn.trusttargets.com">legal@eventiqn.trusttargets.com</a>.
         </p>
       </section>
     </LegalDocumentLayout>

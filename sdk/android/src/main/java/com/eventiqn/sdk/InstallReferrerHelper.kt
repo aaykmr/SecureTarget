@@ -1,4 +1,4 @@
-package com.securetarget.sdk
+package com.eventiqn.sdk
 
 import android.content.Context
 

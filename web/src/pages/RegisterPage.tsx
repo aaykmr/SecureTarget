@@ -11,7 +11,7 @@ export function RegisterPage() {
         <span className={styles.brandIcon}>
           <HugeIcon icon={Analytics01Icon} size={20} />
         </span>
-        SecureTarget
+        EventIQN
       </Link>
       <div className={styles.intro}>
         <h1 className={styles.title}>Create account</h1>

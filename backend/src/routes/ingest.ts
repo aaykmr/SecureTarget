@@ -2,7 +2,7 @@ import type pg from "pg";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Database } from "better-sqlite3";
 import { validateIngestEvent } from "../../../packages/contracts/src/events.js";
-import { hashToken, tokenSaltForCompany } from "@securetarget/shared";
+import { hashToken, tokenSaltForCompany } from "@eventiqn/shared";
 import {
   isEventProcessed,
   markEventProcessed,

@@ -1,4 +1,4 @@
--- Postgres schema for SecureTarget (dashboard + ingest + device matching)
+-- Postgres schema for EventIQN (dashboard + ingest + device matching)
 -- Applied automatically on backend startup when DATABASE_URL is set.
 
 -- Dashboard

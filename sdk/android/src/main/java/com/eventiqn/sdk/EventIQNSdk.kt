@@ -1,4 +1,4 @@
-package com.securetarget.sdk
+package com.eventiqn.sdk
 
 import android.content.Context
 import android.content.Intent
@@ -16,7 +16,7 @@ import java.util.Locale
 import java.util.TimeZone
 import java.util.concurrent.Executors
 
-data class SecureTargetConfig(
+data class EventIQNConfig(
     val apiKey: String,
     val companyId: String,
     val endpoint: String
@@ -58,13 +58,13 @@ data class InstallAttributionResult(
     val ruleName: String? = null
 )
 
-class SecureTargetSdk(
+class EventIQNSdk(
     context: Context,
-    private val config: SecureTargetConfig
+    private val config: EventIQNConfig
 ) {
     private val appContext = context.applicationContext
     private val prefs: SharedPreferences =
-        appContext.getSharedPreferences("securetarget_sdk", Context.MODE_PRIVATE)
+        appContext.getSharedPreferences("eventiqn_sdk", Context.MODE_PRIVATE)
     private val mainHandler = Handler(Looper.getMainLooper())
     private val ioExecutor = Executors.newSingleThreadExecutor()
     @Volatile

@@ -1,4 +1,4 @@
-# SecureTarget dashboard (web)
+# EventIQN dashboard (web)
 
 Vite + React SPA. Auth and data use the backend REST API with **Postgres** locally and in production.
 

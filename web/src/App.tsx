@@ -1,14 +1,19 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { AppSettingsPage } from "@/pages/AppSettingsPage";
+import { AttributionPage } from "@/pages/AttributionPage";
+import { CampaignsPage } from "@/pages/CampaignsPage";
 import { DashboardLayout } from "@/pages/DashboardLayout";
 import { DashboardPage } from "@/pages/DashboardPage";
+import { EventsPage } from "@/pages/EventsPage";
 import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
 import { HomePage } from "@/pages/HomePage";
+import { LinksPage } from "@/pages/LinksPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { PrivacyPage } from "@/pages/PrivacyPage";
 import { ProjectPage } from "@/pages/ProjectPage";
 import { RegisterPage } from "@/pages/RegisterPage";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
-import { StubProjectPage } from "@/pages/StubProjectPage";
+import { SkanPage } from "@/pages/SkanPage";
 import { TermsPage } from "@/pages/TermsPage";
 
 export function App() {
@@ -24,12 +29,12 @@ export function App() {
       <Route path="/dashboard" element={<DashboardLayout />}>
         <Route index element={<DashboardPage />} />
         <Route path=":projectId" element={<ProjectPage />} />
-        <Route path=":projectId/campaigns" element={<StubProjectPage title="Campaigns" />} />
-        <Route path=":projectId/attribution" element={<StubProjectPage title="Attribution" />} />
-        <Route path=":projectId/links" element={<StubProjectPage title="Links" />} />
-        <Route path=":projectId/events" element={<StubProjectPage title="Events" />} />
-        <Route path=":projectId/skan" element={<StubProjectPage title="SKAN" />} />
-        <Route path=":projectId/settings/apps" element={<StubProjectPage title="App settings" />} />
+        <Route path=":projectId/campaigns" element={<CampaignsPage />} />
+        <Route path=":projectId/attribution" element={<AttributionPage />} />
+        <Route path=":projectId/links" element={<LinksPage />} />
+        <Route path=":projectId/events" element={<EventsPage />} />
+        <Route path=":projectId/skan" element={<SkanPage />} />
+        <Route path=":projectId/settings/apps" element={<AppSettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

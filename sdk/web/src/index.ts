@@ -3,9 +3,9 @@ import type { DeviceDetails, UtmParams } from "../../../packages/contracts/src/d
 
 type FetchLike = typeof fetch;
 
-const DEFAULT_SESSION_STORAGE_KEY = "securetarget_session_id";
-const FIRST_OPEN_KEY = "securetarget_first_open_sent";
-const CLICK_ID_KEY = "securetarget_click_id";
+const DEFAULT_SESSION_STORAGE_KEY = "eventiqn_session_id";
+const FIRST_OPEN_KEY = "eventiqn_first_open_sent";
+const CLICK_ID_KEY = "eventiqn_click_id";
 
 export interface InstallAttributionResult {
   attributed: boolean;
@@ -22,7 +22,7 @@ export interface InstallAttributionResult {
 
 export type InstallAttributionCallback = (result: InstallAttributionResult) => void;
 
-export interface SecureTargetClientConfig {
+export interface EventIQNClientConfig {
   apiKey: string;
   companyId: string;
   endpoint: string;
@@ -81,7 +81,7 @@ function collectWebDevice(extra?: Partial<DeviceDetails>): DeviceDetails {
   };
 }
 
-export class SecureTargetClient {
+export class EventIQNClient {
   private readonly apiKey: string;
   private readonly companyId: string;
   private readonly endpoint: string;
@@ -97,7 +97,7 @@ export class SecureTargetClient {
   private installCallbacks: InstallAttributionCallback[] = [];
   private storedClickId: string | null = null;
 
-  constructor(config: SecureTargetClientConfig) {
+  constructor(config: EventIQNClientConfig) {
     this.apiKey = config.apiKey;
     this.companyId = config.companyId;
     this.endpoint = config.endpoint.replace(/\/+$/, "");
@@ -383,8 +383,8 @@ export class SecureTargetClient {
   }
 }
 
-export function init(config: SecureTargetClientConfig): SecureTargetClient {
-  return new SecureTargetClient(config);
+export function init(config: EventIQNClientConfig): EventIQNClient {
+  return new EventIQNClient(config);
 }
 
 export type { DeviceDetails, UtmParams };

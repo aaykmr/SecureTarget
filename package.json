@@ -1,5 +1,5 @@
 {
-  "name": "securetarget",
+  "name": "eventiqn",
   "version": "0.1.0",
   "private": true,
   "workspaces": [
@@ -17,10 +17,10 @@
     "db:reset": "docker compose down -v && docker compose up -d --wait postgres",
     "db:logs": "docker compose logs -f postgres",
     "dev:web": "npm run dev --workspace web",
-    "dev:site": "npm run dev --workspace @securetarget/site",
-    "dev:backend": "npm run db:up && node scripts/wait-for-postgres.mjs && npm run start --workspace @securetarget/backend",
+    "dev:site": "npm run dev --workspace @eventiqn/site",
+    "dev:backend": "npm run db:up && node scripts/wait-for-postgres.mjs && npm run start --workspace @eventiqn/backend",
     "dev:ingest": "npm run dev:backend",
-    "build:sdk-browser": "npm run build:browser --workspace @securetarget/web-sdk",
+    "build:sdk-browser": "npm run build:browser --workspace @eventiqn/web-sdk",
     "build:sdk-zips": "node scripts/build-sdk-zips.mjs"
   },
   "devDependencies": {

@@ -1,0 +1,25 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  width: 100%;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-6);
+  align-items: end;
+}
+
+.meta {
+  margin: 0;
+  font-size: var(--text-body-sm);
+  color: var(--color-fg-muted);
+}
+
+.pagination {
+  display: flex;
+  gap: var(--space-6);
+  font-size: var(--text-body-sm);
+}

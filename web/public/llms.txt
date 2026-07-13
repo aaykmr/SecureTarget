@@ -1,6 +1,6 @@
-# SecureTarget
+# EventIQN
 
-SecureTarget is an attribution and event ingest platform. Apps send events to the ingest API; the dashboard provides projects, API keys, campaign links, and analytics.
+EventIQN is an attribution and event ingest platform. Apps send events to the ingest API; the dashboard provides projects, API keys, campaign links, and analytics.
 
 ## Dashboard (human setup)
 
@@ -23,10 +23,10 @@ Never commit production API keys to source control. Use environment variables or
 
 Hosted script: `/sdk.js` on the dashboard origin (example: https://eventiqn.trusttargets.com/sdk.js).
 
-npm package: `@securetarget/web-sdk`
+npm package: `@eventiqn/web-sdk`
 
 ```javascript
-import { init } from "@securetarget/web-sdk";
+import { init } from "@eventiqn/web-sdk";
 
 const st = init({
   apiKey: "YOUR_API_KEY",
@@ -35,19 +35,19 @@ const st = init({
 });
 ```
 
-Script tag: load `/sdk.js`, then `window.SecureTarget.init({ apiKey, companyId, endpoint })`.
+Script tag: load `/sdk.js`, then `window.EventIQN.init({ apiKey, companyId, endpoint })`.
 
 ## iOS SDK
 
-Download: `/downloads/securetarget-ios-sdk.zip`
+Download: `/downloads/eventiqn-ios-sdk.zip`
 
-Initialize `SecureTargetSDK` with apiKey, companyId, endpoint URL. Call `bootstrapSession()` on launch. Forward deep links via `handleDeepLink(url:)`.
+Initialize `EventIQNSDK` with apiKey, companyId, endpoint URL. Call `bootstrapSession()` on launch. Forward deep links via `handleDeepLink(url:)`.
 
 ## Android SDK
 
-Download: `/downloads/securetarget-android-sdk.zip`
+Download: `/downloads/eventiqn-android-sdk.zip`
 
-Add Kotlin sources and `com.android.installreferrer:installreferrer:2.2`. Initialize `SecureTargetSdk` with apiKey, companyId, endpoint. Call `ensureSession()` in `Application.onCreate`. Pass intents to `handleDeepLink`.
+Add Kotlin sources and `com.android.installreferrer:installreferrer:2.2`. Initialize `EventIQNSdk` with apiKey, companyId, endpoint. Call `ensureSession()` in `Application.onCreate`. Pass intents to `handleDeepLink`.
 
 ## Ingest API (SDK / server)
 

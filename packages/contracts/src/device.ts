@@ -1,4 +1,4 @@
-/** Sent on POST /v1/session/bootstrap (validated by ingest; persisted in SecureTarget device DB). Never repeat on later ingest calls. */
+/** Sent on POST /v1/session/bootstrap (validated by ingest; persisted in EventIQN device DB). Never repeat on later ingest calls. */
 export type DevicePlatform = "web" | "ios" | "android";
 
 export interface UtmParams {

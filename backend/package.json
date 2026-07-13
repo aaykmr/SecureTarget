@@ -1,5 +1,5 @@
 {
-  "name": "@securetarget/backend",
+  "name": "@eventiqn/backend",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -7,7 +7,7 @@
     "start": "tsx src/server.ts"
   },
   "dependencies": {
-    "@securetarget/shared": "*",
+    "@eventiqn/shared": "*",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.0.0",
     "dotenv": "^17.4.2",

@@ -5,7 +5,7 @@ import AdSupport
 import AppTrackingTransparency
 #endif
 
-public struct SecureTargetConfig {
+public struct EventIQNConfig {
     public let apiKey: String
     public let companyId: String
     public let endpoint: URL
@@ -17,7 +17,7 @@ public struct SecureTargetConfig {
     }
 }
 
-public struct SecureTargetUtmParams: Encodable {
+public struct EventIQNUtmParams: Encodable {
     public var source: String?
     public var medium: String?
     public var campaign: String?
@@ -25,7 +25,7 @@ public struct SecureTargetUtmParams: Encodable {
     public var content: String?
 }
 
-public struct SecureTargetDeviceDetails: Encodable {
+public struct EventIQNDeviceDetails: Encodable {
     public let platform = "ios"
     public var osVersion: String?
     public var model: String?
@@ -37,7 +37,7 @@ public struct SecureTargetDeviceDetails: Encodable {
     public var vendorId: String?
     public var installReferrer: String?
     public var deepLinkUrl: String?
-    public var utm: SecureTargetUtmParams?
+    public var utm: EventIQNUtmParams?
 
     public init(
         osVersion: String? = nil,
@@ -50,7 +50,7 @@ public struct SecureTargetDeviceDetails: Encodable {
         vendorId: String? = nil,
         installReferrer: String? = nil,
         deepLinkUrl: String? = nil,
-        utm: SecureTargetUtmParams? = nil
+        utm: EventIQNUtmParams? = nil
     ) {
         self.osVersion = osVersion
         self.model = model
@@ -65,7 +65,7 @@ public struct SecureTargetDeviceDetails: Encodable {
         self.utm = utm
     }
 
-    public static func captureDefault(deepLinkUrl: String? = nil) -> SecureTargetDeviceDetails {
+    public static func captureDefault(deepLinkUrl: String? = nil) -> EventIQNDeviceDetails {
         let tz = TimeZone.current.identifier
         let loc = Locale.current.identifier
         var vendorId: String?
@@ -82,7 +82,7 @@ public struct SecureTargetDeviceDetails: Encodable {
             }
         }
         let os = "\(UIDevice.current.systemName) \(UIDevice.current.systemVersion)"
-        return SecureTargetDeviceDetails(
+        return EventIQNDeviceDetails(
             osVersion: os,
             model: UIDevice.current.model,
             locale: loc,
@@ -92,7 +92,7 @@ public struct SecureTargetDeviceDetails: Encodable {
             deepLinkUrl: deepLinkUrl
         )
         #else
-        return SecureTargetDeviceDetails(locale: loc, timezone: tz, deepLinkUrl: deepLinkUrl)
+        return EventIQNDeviceDetails(locale: loc, timezone: tz, deepLinkUrl: deepLinkUrl)
         #endif
     }
 }
@@ -112,7 +112,7 @@ public struct InstallAttributionResult: Decodable {
 
 private struct BootstrapBody: Encodable {
     let occurredAt: String
-    let device: SecureTargetDeviceDetails
+    let device: EventIQNDeviceDetails
 }
 
 private struct BootstrapResponse: Decodable {
@@ -123,23 +123,23 @@ private struct IngestResponse: Decodable {
     let attribution: InstallAttributionResult?
 }
 
-public enum SecureTargetError: Error {
+public enum EventIQNError: Error {
     case missingSession
     case http(Int, String)
     case decode
 }
 
-public final class SecureTargetSDK {
-    private let config: SecureTargetConfig
-    private let storageKey = "securetarget_session_id"
-    private let firstOpenKey = "securetarget_first_open_sent"
-    private let clickIdKey = "securetarget_click_id"
+public final class EventIQNSDK {
+    private let config: EventIQNConfig
+    private let storageKey = "eventiqn_session_id"
+    private let firstOpenKey = "eventiqn_first_open_sent"
+    private let clickIdKey = "eventiqn_click_id"
     private var sessionId: String?
     private var storedClickId: String?
     private var installCallbacks: [(InstallAttributionResult) -> Void] = []
     private let urlSession: URLSession
 
-    public init(config: SecureTargetConfig, urlSession: URLSession = .shared) {
+    public init(config: EventIQNConfig, urlSession: URLSession = .shared) {
         self.config = config
         self.urlSession = urlSession
         if let s = UserDefaults.standard.string(forKey: storageKey) {
@@ -163,7 +163,7 @@ public final class SecureTargetSDK {
         installCallbacks.append(callback)
     }
 
-    public func bootstrapSession(device: SecureTargetDeviceDetails = .captureDefault()) async throws {
+    public func bootstrapSession(device: EventIQNDeviceDetails = .captureDefault()) async throws {
         if sessionId != nil { return }
         let url = config.endpoint.appendingPathComponent("/v1/session/bootstrap")
         var req = URLRequest(url: url)
@@ -173,9 +173,9 @@ public final class SecureTargetSDK {
         let body = BootstrapBody(occurredAt: ISO8601DateFormatter().string(from: Date()), device: device)
         req.httpBody = try JSONEncoder().encode(body)
         let (data, res) = try await urlSession.data(for: req)
-        guard let http = res as? HTTPURLResponse else { throw SecureTargetError.http(-1, "no response") }
+        guard let http = res as? HTTPURLResponse else { throw EventIQNError.http(-1, "no response") }
         guard (200 ... 299).contains(http.statusCode) else {
-            throw SecureTargetError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+            throw EventIQNError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
         }
         let decoded = try JSONDecoder().decode(BootstrapResponse.self, from: data)
         sessionId = decoded.sessionId
@@ -211,7 +211,7 @@ public final class SecureTargetSDK {
 
     private func requireSessionId() async throws -> String {
         try await bootstrapSession()
-        guard let sid = sessionId else { throw SecureTargetError.missingSession }
+        guard let sid = sessionId else { throw EventIQNError.missingSession }
         return sid
     }
 
@@ -225,7 +225,7 @@ public final class SecureTargetSDK {
 
     private func post(path: String, body: [String: Any]) async throws -> Data {
         try await bootstrapSession()
-        guard sessionId != nil else { throw SecureTargetError.missingSession }
+        guard sessionId != nil else { throw EventIQNError.missingSession }
         let url = config.endpoint.appendingPathComponent(path)
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
@@ -233,7 +233,7 @@ public final class SecureTargetSDK {
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
         let (data, res) = try await urlSession.data(for: req)
         guard let http = res as? HTTPURLResponse, (200 ... 299).contains(http.statusCode) else {
-            throw SecureTargetError.http(-1, path)
+            throw EventIQNError.http(-1, path)
         }
         return data
     }

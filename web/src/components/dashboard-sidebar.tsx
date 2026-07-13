@@ -53,7 +53,7 @@ export function DashboardSidebar({ email }: { email: string }) {
       <div className={styles.brandBlock}>
         <Link to="/dashboard" className={styles.brandLink}>
           <HugeIcon icon={Analytics01Icon} size={20} className={styles.brandIcon} />
-          <span className={styles.brandText}>SecureTarget</span>
+          <span className={styles.brandText}>EventIQN</span>
         </Link>
         <p className={styles.tagline}>Dashboard</p>
       </div>

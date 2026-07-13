@@ -53,4 +53,4 @@ When no rule matches above the confidence threshold, `isOrganic: true`.
 
 ## Device DB
 
-Bootstrap device details are persisted in `SECURETARGET_DEVICE_DB_PATH` for matching. Customer DB stores hashed tokens and attribution outcomes only.
+Bootstrap device details are persisted in `EVENTIQN_DEVICE_DB_PATH` for matching. Customer DB stores hashed tokens and attribution outcomes only.

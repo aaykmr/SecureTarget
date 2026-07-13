@@ -1,10 +1,10 @@
-# SecureTarget — client integration guide
+# EventIQN — client integration guide
 
-For **application developers** wiring Web, iOS, or Android apps to SecureTarget’s ingest API (or official SDKs). This document does **not** cover running the SecureTarget dashboard or ingest server; operators should use [`README.md`](../README.md).
+For **application developers** wiring Web, iOS, or Android apps to EventIQN’s ingest API (or official SDKs). This document does **not** cover running the EventIQN dashboard or ingest server; operators should use [`README.md`](../README.md).
 
 ---
 
-## 1. What you need from your SecureTarget host
+## 1. What you need from your EventIQN host
 
 Obtain these from the **project / integration** screen your provider gives you (often after login to a dashboard):
 
@@ -32,9 +32,9 @@ Example config shape:
 
 **Flow:** Call **`POST /v1/session/bootstrap`** once per app install / browser profile (or after you clear the stored session). You receive **`sessionId`**. Store it client-side and send it as **`x-session-id`** on **`/v1/record`** when your deployment expects sessions.
 
-**What SecureTarget persists:** Only an **opaque session id**, **company id**, and **timestamps**. **Device JSON, user-agent, and IP are not stored** from bootstrap. The request body must still include **`occurredAt`** and **`device.platform`** (`web` \| `ios` \| `android`) so the API can validate the payload; extra device fields are optional for you and are **not** retained server-side.
+**What EventIQN persists:** Only an **opaque session id**, **company id**, and **timestamps**. **Device JSON, user-agent, and IP are not stored** from bootstrap. The request body must still include **`occurredAt`** and **`device.platform`** (`web` \| `ios` \| `android`) so the API can validate the payload; extra device fields are optional for you and are **not** retained server-side.
 
-**Your systems:** Keep IP, full device profile, and internal user identity **in your own backend or warehouse** if you need them. Correlate with SecureTarget using **`sessionId`**, **`eventId`**, and the same **opaque token** you send on login/conversion events.
+**Your systems:** Keep IP, full device profile, and internal user identity **in your own backend or warehouse** if you need them. Correlate with EventIQN using **`sessionId`**, **`eventId`**, and the same **opaque token** you send on login/conversion events.
 
 ---
 
@@ -98,9 +98,9 @@ Use the **same** string for **`x-session-id`** and **`token`** (your bootstrap `
 
 | Platform | Integration |
 |----------|-------------|
-| **Web** | Hosted **`sdk.js`** URL from your provider, or npm **`@securetarget/web-sdk`**. Global: `SecureTarget.init({ apiKey, companyId, endpoint })`, then `trackRecord` / `trackLogin` / `trackConversion`. |
+| **Web** | Hosted **`sdk.js`** URL from your provider, or npm **`@eventiqn/web-sdk`**. Global: `EventIQN.init({ apiKey, companyId, endpoint })`, then `trackRecord` / `trackLogin` / `trackConversion`. |
 | **iOS** | Initialize with config + `endpoint`; SDK bootstraps session and sends **`x-session-id`** on tracks. |
-| **Android** | `SecureTargetSdk` with `SecureTargetConfig(apiKey, companyId, endpoint)`; session id in app storage; same track APIs. |
+| **Android** | `EventIQNSdk` with `EventIQNConfig(apiKey, companyId, endpoint)`; session id in app storage; same track APIs. |
 
 More examples and options: [`docs/sdk-integration.md`](sdk-integration.md).
 

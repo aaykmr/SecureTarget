@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import type { Database } from "better-sqlite3";
 import type pg from "pg";
 import type { InstallEvent } from "../../../packages/contracts/src/events.js";
-import { hashToken, tokenSaltForCompany } from "@securetarget/shared";
+import { hashToken, tokenSaltForCompany } from "@eventiqn/shared";
 import { getIdentityForSession } from "./deviceIdentity.js";
 import { runMatchRules, type MatchCandidate } from "./matchRules.js";
 import { markPendingClickMatched } from "../routes/clickRedirect.js";

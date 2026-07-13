@@ -79,13 +79,13 @@ export function IntegrationSnippets({ companyId, projectId }: { companyId: strin
   const dashboardOrigin = dashboardDefault.replace(/\/+$/, "");
   const llmsUrl = dashboardOrigin ? `${dashboardOrigin}/llms.txt` : "/llms.txt";
   const sdkUrl = dashboardOrigin ? `${dashboardOrigin}/sdk.js` : "/sdk.js";
-  const iosSdkZip = dashboardOrigin ? `${dashboardOrigin}/downloads/securetarget-ios-sdk.zip` : "/downloads/securetarget-ios-sdk.zip";
+  const iosSdkZip = dashboardOrigin ? `${dashboardOrigin}/downloads/eventiqn-ios-sdk.zip` : "/downloads/eventiqn-ios-sdk.zip";
   const androidSdkZip = dashboardOrigin
-    ? `${dashboardOrigin}/downloads/securetarget-android-sdk.zip`
-    : "/downloads/securetarget-android-sdk.zip";
+    ? `${dashboardOrigin}/downloads/eventiqn-android-sdk.zip`
+    : "/downloads/eventiqn-android-sdk.zip";
 
   const snippets = useMemo(() => {
-    const webNpm = `import { init } from "@securetarget/web-sdk";
+    const webNpm = `import { init } from "@eventiqn/web-sdk";
 
 const st = init({
   apiKey: "YOUR_API_KEY",
@@ -103,8 +103,8 @@ await st.trackLogin({
 <script>
   (function () {
     function run() {
-      if (!window.SecureTarget || !window.SecureTarget.init) return;
-      window.SecureTarget.init({
+      if (!window.EventIQN || !window.EventIQN.init) return;
+      window.EventIQN.init({
         apiKey: "YOUR_API_KEY",
         companyId: "${companyId}",
         endpoint: "${endpoint}",
@@ -118,9 +118,9 @@ await st.trackLogin({
   })();
 </script>`;
 
-    const iosInit = `import SecureTargetSDK
+    const iosInit = `import EventIQNSDK
 
-let sdk = SecureTargetSDK(config: SecureTargetConfig(
+let sdk = EventIQNSDK(config: EventIQNConfig(
   apiKey: "YOUR_API_KEY",
   companyId: "${companyId}",
   endpoint: URL(string: "${endpoint}")!
@@ -142,9 +142,9 @@ sdk.onInstallAttribution { result in
   print("Attributed:", result.attributed, result.mediaSource ?? "")
 }`;
 
-    const androidInit = `val sdk = SecureTargetSdk(
+    const androidInit = `val sdk = EventIQNSdk(
   applicationContext,
-  SecureTargetConfig(
+  EventIQNConfig(
     apiKey = "YOUR_API_KEY",
     companyId = "${companyId}",
     endpoint = "${endpoint}"
@@ -153,16 +153,16 @@ sdk.onInstallAttribution { result in
 
 // Application.onCreate — session + deferred install referrer
 sdk.ensureSession { error ->
-  if (error != null) Log.e("SecureTarget", "bootstrap failed", error)
+  if (error != null) Log.e("EventIQN", "bootstrap failed", error)
 }`;
 
     const androidDeepLink = `// Activity — onCreate / onNewIntent
 sdk.handleDeepLink(intent) { error ->
-  if (error != null) Log.e("SecureTarget", "deep link failed", error)
+  if (error != null) Log.e("EventIQN", "deep link failed", error)
 }
 
 sdk.onInstallAttribution { result ->
-  Log.d("SecureTarget", "mediaSource=\${result.mediaSource}")
+  Log.d("EventIQN", "mediaSource=\${result.mediaSource}")
 }`;
 
     const androidConversion = `sdk.trackConversion(
@@ -171,7 +171,7 @@ sdk.onInstallAttribution { result ->
   conversionName = "purchase",
   value = 29.99
 ) { error ->
-  if (error != null) Log.e("SecureTarget", "conversion failed", error)
+  if (error != null) Log.e("EventIQN", "conversion failed", error)
 }`;
 
     return { webNpm, webScript, iosInit, iosDeepLink, androidInit, androidDeepLink, androidConversion };
@@ -180,7 +180,7 @@ sdk.onInstallAttribution { result ->
   const projectContext = useMemo(
     () =>
       [
-        "SecureTarget integration context",
+        "EventIQN integration context",
         "",
         `companyId: ${companyId}`,
         `ingest endpoint: ${endpoint}`,
@@ -283,7 +283,7 @@ sdk.onInstallAttribution { result ->
             </p>
             <p>
               <strong>npm / bundler</strong> — React, Next.js, Vite in this monorepo via{" "}
-              <code>@securetarget/web-sdk</code>.
+              <code>@eventiqn/web-sdk</code>.
             </p>
           </Step>
           <Step n={3} title="Initialize on your landing page">
@@ -327,13 +327,13 @@ sdk.onInstallAttribution { result ->
             <p>Unzip and add the Swift sources to your Xcode project, or add the folder as a local Swift package.</p>
             <SdkDownload
               href={iosSdkZip}
-              label="Download securetarget-ios-sdk.zip"
-              hint="SecureTargetSDK.swift + README"
+              label="Download eventiqn-ios-sdk.zip"
+              hint="EventIQNSDK.swift + README"
             />
           </Step>
           <Step n={3} title="Add sources to your app">
             <p>
-              Drag <code>SecureTargetSDK/SecureTargetSDK.swift</code> into your target, or use File → Add Package
+              Drag <code>EventIQNSDK/EventIQNSDK.swift</code> into your target, or use File → Add Package
               Dependencies → Add Local… and point at the unzipped folder.
             </p>
           </Step>
@@ -399,13 +399,13 @@ sdk.onInstallAttribution { result ->
             </p>
             <SdkDownload
               href={androidSdkZip}
-              label="Download securetarget-android-sdk.zip"
-              hint="SecureTargetSdk.kt, InstallReferrerHelper.kt + README"
+              label="Download eventiqn-android-sdk.zip"
+              hint="EventIQNSdk.kt, InstallReferrerHelper.kt + README"
             />
           </Step>
           <Step n={3} title="Add sources and Gradle dependency">
             <p>
-              Copy <code>src/main/java/com/securetarget/sdk/*.kt</code> into your app. Add{" "}
+              Copy <code>src/main/java/com/eventiqn/sdk/*.kt</code> into your app. Add{" "}
               <code>implementation &quot;com.android.installreferrer:installreferrer:2.2&quot;</code> to{" "}
               <code>app/build.gradle</code>.
             </p>
@@ -432,7 +432,7 @@ sdk.onInstallAttribution { result ->
               <Link to={`/dashboard/${projectId}/links`} className={styles.inlineLink}>
                 tracking link
               </Link>
-              . SecureTarget appends <code>referrer=st_click_id=…</code> to the Play Store URL; the SDK reads it on first
+              . EventIQN appends <code>referrer=st_click_id=…</code> to the Play Store URL; the SDK reads it on first
               open.
             </p>
           </Step>

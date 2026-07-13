@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import crypto from "node:crypto";
 import type pg from "pg";
 import { verifyAuthToken, signAuthToken } from "./jwt.js";
 import {
@@ -12,6 +13,24 @@ import {
   revokeApiKey,
   verifyPassword,
 } from "./repos.js";
+import {
+  campaignSummary,
+  countSdkEvents,
+  listInstallAttributions,
+  listSdkEvents,
+  listSkanPostbacks,
+  organicVsNonOrganic,
+  tokenHashForLookup,
+} from "./analytics.js";
+import {
+  createTrackingLink,
+  deleteTrackingLink,
+  getAttributionSettings,
+  getTrackingLinkForCompany,
+  listTrackingLinks,
+  updateTrackingLinkCampaignPresets,
+  upsertAttributionSettings,
+} from "../services/trackingLinks.js";
 
 function readJsonBody(req: IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
@@ -35,11 +54,17 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
+function parseQuery(req: IncomingMessage): URLSearchParams {
+  const url = req.url ?? "";
+  const q = url.indexOf("?");
+  return new URLSearchParams(q === -1 ? "" : url.slice(q + 1));
+}
+
 function applyDashboardCors(req: IncomingMessage, res: ServerResponse): void {
   const origin = process.env.DASHBOARD_CORS_ORIGIN ?? process.env.CORS_ORIGIN ?? "*";
   res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.setHeader("Access-Control-Max-Age", "86400");
 }
 
@@ -236,6 +261,249 @@ export async function handleDashboardApi(
     }
     const ok = await revokeApiKey(db, project.id, parts[3]!);
     sendJson(res, ok ? 200 : 404, { ok });
+    return true;
+  }
+
+  const projectId = parts[1]!;
+  const project = await getProjectForUser(db, projectId, auth.userId);
+
+  // GET /v1/projects/:id/events
+  if (req.method === "GET" && parts[0] === "projects" && parts[2] === "events" && parts.length === 3) {
+    if (!project) {
+      sendJson(res, 404, { error: "Project not found." });
+      return true;
+    }
+    const query = parseQuery(req);
+    const pageSize = 50;
+    const allowedAction = new Set(["record", "login", "conversion", "custom", "install"]);
+    const actionType = query.get("actionType");
+    const eventLabel = query.get("event")?.trim().slice(0, 500) ?? "";
+    const token = query.get("token")?.trim() ?? "";
+    const filter = {
+      ...(actionType && allowedAction.has(actionType) ? { actionType } : {}),
+      ...(eventLabel ? { eventLabel } : {}),
+      ...(token ? { tokenHash: tokenHashForLookup(project.company_id, token) } : {}),
+    };
+    const total = await countSdkEvents(db, project.company_id, filter);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const requested = Math.max(1, parseInt(query.get("page") ?? "1", 10) || 1);
+    const page = Math.min(requested, totalPages);
+    const events = await listSdkEvents(db, project.company_id, {
+      ...filter,
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
+    });
+    sendJson(res, 200, { events, total, page, pageSize, totalPages });
+    return true;
+  }
+
+  // GET /v1/projects/:id/links
+  if (req.method === "GET" && parts[0] === "projects" && parts[2] === "links" && parts.length === 3) {
+    if (!project) {
+      sendJson(res, 404, { error: "Project not found." });
+      return true;
+    }
+    const links = await listTrackingLinks(db, project.company_id);
+    sendJson(res, 200, { links });
+    return true;
+  }
+
+  // POST /v1/projects/:id/links
+  if (req.method === "POST" && parts[0] === "projects" && parts[2] === "links" && parts.length === 3) {
+    if (!project) {
+      sendJson(res, 404, { error: "Project not found." });
+      return true;
+    }
+    try {
+      const body = (await readJsonBody(req)) as {
+        name?: string;
+        slug?: string;
+        iosUrl?: string;
+        androidUrl?: string;
+        webUrl?: string;
+      };
+      const name = String(body.name ?? "").trim();
+      const slug = String(body.slug ?? "").trim().toLowerCase();
+      if (!name || !slug) {
+        sendJson(res, 400, { error: "Name and slug are required." });
+        return true;
+      }
+      if (!/^[a-z0-9-]+$/.test(slug)) {
+        sendJson(res, 400, { error: "Slug must be lowercase alphanumeric with hyphens." });
+        return true;
+      }
+      const link = await createTrackingLink(db, {
+        companyId: project.company_id,
+        name,
+        slug,
+        destinationType: "multi",
+        iosUrl: body.iosUrl?.trim() || undefined,
+        androidUrl: body.androidUrl?.trim() || undefined,
+        webUrl: body.webUrl?.trim() || undefined,
+      });
+      sendJson(res, 201, { link });
+    } catch (e) {
+      sendJson(res, 500, { error: e instanceof Error ? e.message : "Failed to create link." });
+    }
+    return true;
+  }
+
+  // DELETE /v1/projects/:id/links/:linkId
+  if (req.method === "DELETE" && parts[0] === "projects" && parts[2] === "links" && parts.length === 4) {
+    if (!project) {
+      sendJson(res, 404, { error: "Project not found." });
+      return true;
+    }
+    const ok = await deleteTrackingLink(db, project.company_id, parts[3]!);
+    sendJson(res, ok ? 200 : 404, { ok });
+    return true;
+  }
+
+  // POST /v1/projects/:id/links/:linkId/presets
+  if (req.method === "POST" && parts[0] === "projects" && parts[2] === "links" && parts[4] === "presets" && parts.length === 5) {
+    if (!project) {
+      sendJson(res, 404, { error: "Project not found." });
+      return true;
+    }
+    const linkId = parts[3]!;
+    const link = await getTrackingLinkForCompany(db, project.company_id, linkId);
+    if (!link) {
+      sendJson(res, 404, { error: "Link not found." });
+      return true;
+    }
+    const body = (await readJsonBody(req)) as {
+      label?: string;
+      mediaSource?: string;
+      campaignId?: string;
+      adgroupId?: string;
+      creativeId?: string;
+      deepLinkValue?: string;
+    };
+    const label = String(body.label ?? "").trim();
+    const mediaSource = String(body.mediaSource ?? "").trim();
+    const campaignId = String(body.campaignId ?? "").trim();
+    if (!label || !mediaSource || !campaignId) {
+      sendJson(res, 400, { error: "Label, media source, and campaign are required." });
+      return true;
+    }
+    const presets = link.campaign_presets_json ? (JSON.parse(link.campaign_presets_json) as unknown[]) : [];
+    presets.push({
+      id: crypto.randomUUID(),
+      label,
+      mediaSource,
+      campaignId,
+      adgroupId: body.adgroupId?.trim() || undefined,
+      creativeId: body.creativeId?.trim() || undefined,
+      deepLinkValue: body.deepLinkValue?.trim() || undefined,
+    });
+    await updateTrackingLinkCampaignPresets(db, project.company_id, linkId, JSON.stringify(presets));
+    sendJson(res, 201, { ok: true });
+    return true;
+  }
+
+  // DELETE /v1/projects/:id/links/:linkId/presets/:presetId
+  if (
+    req.method === "DELETE" &&
+    parts[0] === "projects" &&
+    parts[2] === "links" &&
+    parts[4] === "presets" &&
+    parts.length === 6
+  ) {
+    if (!project) {
+      sendJson(res, 404, { error: "Project not found." });
+      return true;
+    }
+    const linkId = parts[3]!;
+    const presetId = parts[5]!;
+    const link = await getTrackingLinkForCompany(db, project.company_id, linkId);
+    if (!link) {
+      sendJson(res, 404, { error: "Link not found." });
+      return true;
+    }
+    const presets = (link.campaign_presets_json ? JSON.parse(link.campaign_presets_json) : []) as { id: string }[];
+    const next = presets.filter((p) => p.id !== presetId);
+    await updateTrackingLinkCampaignPresets(db, project.company_id, linkId, JSON.stringify(next));
+    sendJson(res, 200, { ok: true });
+    return true;
+  }
+
+  // GET /v1/projects/:id/settings
+  if (req.method === "GET" && parts[0] === "projects" && parts[2] === "settings" && parts.length === 3) {
+    if (!project) {
+      sendJson(res, 404, { error: "Project not found." });
+      return true;
+    }
+    const settings = await getAttributionSettings(db, project.company_id);
+    sendJson(res, 200, { settings, companyId: project.company_id });
+    return true;
+  }
+
+  // PUT /v1/projects/:id/settings
+  if (req.method === "PUT" && parts[0] === "projects" && parts[2] === "settings" && parts.length === 3) {
+    if (!project) {
+      sendJson(res, 404, { error: "Project not found." });
+      return true;
+    }
+    const body = (await readJsonBody(req)) as {
+      iosAppId?: string;
+      androidPackage?: string;
+      iosTeamId?: string;
+      associatedDomain?: string;
+      partnerPostbackUrl?: string;
+      androidSha256Certs?: string[];
+      skanIds?: string[];
+      installAttributionWindowHours?: number;
+      enableProbabilisticMatching?: boolean;
+    };
+    await upsertAttributionSettings(db, project.company_id, {
+      iosAppId: body.iosAppId?.trim() || null,
+      androidPackage: body.androidPackage?.trim() || null,
+      iosTeamId: body.iosTeamId?.trim() || null,
+      associatedDomain: body.associatedDomain?.trim() || null,
+      partnerPostbackUrl: body.partnerPostbackUrl?.trim() || null,
+      androidSha256Certs: body.androidSha256Certs,
+      skanIds: body.skanIds,
+      installAttributionWindowHours: body.installAttributionWindowHours,
+      enableProbabilisticMatching: body.enableProbabilisticMatching,
+    });
+    sendJson(res, 200, { ok: true });
+    return true;
+  }
+
+  // GET /v1/projects/:id/campaigns/summary
+  if (req.method === "GET" && parts[0] === "projects" && parts[2] === "campaigns" && parts[3] === "summary" && parts.length === 4) {
+    if (!project) {
+      sendJson(res, 404, { error: "Project not found." });
+      return true;
+    }
+    const query = parseQuery(req);
+    const summary = await campaignSummary(db, project.company_id, query.get("from") ?? undefined, query.get("to") ?? undefined);
+    const organic = await organicVsNonOrganic(db, project.company_id);
+    sendJson(res, 200, { summary, organic });
+    return true;
+  }
+
+  // GET /v1/projects/:id/attribution/installs
+  if (req.method === "GET" && parts[0] === "projects" && parts[2] === "attribution" && parts[3] === "installs" && parts.length === 4) {
+    if (!project) {
+      sendJson(res, 404, { error: "Project not found." });
+      return true;
+    }
+    const limit = Math.min(200, Math.max(1, parseInt(parseQuery(req).get("limit") ?? "50", 10) || 50));
+    const installs = await listInstallAttributions(db, project.company_id, limit);
+    sendJson(res, 200, { installs });
+    return true;
+  }
+
+  // GET /v1/projects/:id/skan/postbacks
+  if (req.method === "GET" && parts[0] === "projects" && parts[2] === "skan" && parts[3] === "postbacks" && parts.length === 4) {
+    if (!project) {
+      sendJson(res, 404, { error: "Project not found." });
+      return true;
+    }
+    const limit = Math.min(200, Math.max(1, parseInt(parseQuery(req).get("limit") ?? "50", 10) || 50));
+    const postbacks = await listSkanPostbacks(db, project.company_id, limit);
+    sendJson(res, 200, { postbacks });
     return true;
   }
 

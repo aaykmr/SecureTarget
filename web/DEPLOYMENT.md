@@ -1,4 +1,4 @@
-# SecureTarget web (dashboard SPA)
+# EventIQN web (dashboard SPA)
 
 Vite + React client-side app. All auth and data go through the backend REST API (`/v1/*` on EC2). Postgres is used in production — not SQLite.
 
@@ -18,7 +18,7 @@ npm run dev:web
 
 Open http://localhost:3000. Requires Docker for `npm run db:up` (Postgres on port 5432). API keys created in the dashboard are stored in Postgres and validated by ingest when `DATABASE_URL` is set.
 
-Manual Postgres URL (Docker Compose): `postgres://securetarget:securetarget@localhost:5433/securetarget`
+Manual Postgres URL (Docker Compose): `postgres://eventiqn:eventiqn@localhost:5433/eventiqn`
 
 ## Production architecture
 

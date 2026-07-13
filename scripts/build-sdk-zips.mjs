@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Packages iOS and Android SDK sources into zip archives for dashboard download.
- * Output: web/public/downloads/securetarget-{ios,android}-sdk.zip
+ * Output: web/public/downloads/eventiqn-{ios,android}-sdk.zip
  */
 import { execSync } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -27,26 +27,26 @@ function zipStaging(stagingDir, zipPath, entries) {
 
 function buildIosZip() {
   const staging = mkdtempSync(join(root, ".sdk-zip-ios-"));
-  const bundleDir = join(staging, "SecureTargetSDK");
+  const bundleDir = join(staging, "EventIQNSDK");
   mkdirSync(bundleDir, { recursive: true });
 
-  cpSync(join(root, "sdk/ios/Sources/SecureTargetSDK/SecureTargetSDK.swift"), join(bundleDir, "SecureTargetSDK.swift"));
+  cpSync(join(root, "sdk/ios/Sources/EventIQNSDK/EventIQNSDK.swift"), join(bundleDir, "EventIQNSDK.swift"));
 
   writeFileSync(
     join(staging, "README.md"),
-    `# SecureTarget iOS SDK v${version}
+    `# EventIQN iOS SDK v${version}
 
 ## Install
 
-1. Unzip and drag the \`SecureTargetSDK\` folder into your Xcode project (copy items if needed).
+1. Unzip and drag the \`EventIQNSDK\` folder into your Xcode project (copy items if needed).
 2. Or add the folder as a local Swift package: File → Add Package Dependencies → Add Local…
 
 ## Configure
 
 \`\`\`swift
-import SecureTargetSDK
+import EventIQNSDK
 
-let sdk = SecureTargetSDK(config: SecureTargetConfig(
+let sdk = EventIQNSDK(config: EventIQNConfig(
   apiKey: "YOUR_API_KEY",
   companyId: "YOUR_COMPANY_ID",
   endpoint: URL(string: "https://your-ingest-host.example.com")!
@@ -59,33 +59,33 @@ Task {
 
 ## Docs
 
-See your SecureTarget dashboard → Integration → iOS for deep links, install attribution, and conversions.
+See your EventIQN dashboard → Integration → iOS for deep links, install attribution, and conversions.
 `,
     "utf8"
   );
 
-  const zipPath = join(outDir, "securetarget-ios-sdk.zip");
-  zipStaging(staging, zipPath, ["SecureTargetSDK", "README.md"]);
+  const zipPath = join(outDir, "eventiqn-ios-sdk.zip");
+  zipStaging(staging, zipPath, ["EventIQNSDK", "README.md"]);
   rmSync(staging, { recursive: true, force: true });
   console.log(`[build:sdk-zips] ${zipPath}`);
 }
 
 function buildAndroidZip() {
   const staging = mkdtempSync(join(root, ".sdk-zip-android-"));
-  const srcDir = join(staging, "src", "main", "java", "com", "securetarget", "sdk");
+  const srcDir = join(staging, "src", "main", "java", "com", "eventiqn", "sdk");
   mkdirSync(srcDir, { recursive: true });
 
-  const androidSdk = join(root, "sdk/android/src/main/java/com/securetarget/sdk");
-  cpSync(join(androidSdk, "SecureTargetSdk.kt"), join(srcDir, "SecureTargetSdk.kt"));
+  const androidSdk = join(root, "sdk/android/src/main/java/com/eventiqn/sdk");
+  cpSync(join(androidSdk, "EventIQNSdk.kt"), join(srcDir, "EventIQNSdk.kt"));
   cpSync(join(androidSdk, "InstallReferrerHelper.kt"), join(srcDir, "InstallReferrerHelper.kt"));
 
   writeFileSync(
     join(staging, "README.md"),
-    `# SecureTarget Android SDK v${version}
+    `# EventIQN Android SDK v${version}
 
 ## Install
 
-1. Unzip and copy \`src/main/java/com/securetarget/sdk/*.kt\` into your app module (same package path).
+1. Unzip and copy \`src/main/java/com/eventiqn/sdk/*.kt\` into your app module (same package path).
 2. Add the Play Install Referrer library to \`app/build.gradle\`:
 
 \`\`\`gradle
@@ -97,9 +97,9 @@ dependencies {
 ## Configure
 
 \`\`\`kotlin
-val sdk = SecureTargetSdk(
+val sdk = EventIQNSdk(
   applicationContext,
-  SecureTargetConfig(
+  EventIQNConfig(
     apiKey = "YOUR_API_KEY",
     companyId = "YOUR_COMPANY_ID",
     endpoint = "https://your-ingest-host.example.com"
@@ -107,18 +107,18 @@ val sdk = SecureTargetSdk(
 )
 
 sdk.ensureSession { error ->
-  if (error != null) Log.e("SecureTarget", "bootstrap failed", error)
+  if (error != null) Log.e("EventIQN", "bootstrap failed", error)
 }
 \`\`\`
 
 ## Docs
 
-See your SecureTarget dashboard → Integration → Android for deep links, Play Store attribution, and conversions.
+See your EventIQN dashboard → Integration → Android for deep links, Play Store attribution, and conversions.
 `,
     "utf8"
   );
 
-  const zipPath = join(outDir, "securetarget-android-sdk.zip");
+  const zipPath = join(outDir, "eventiqn-android-sdk.zip");
   zipStaging(staging, zipPath, ["src", "README.md"]);
   rmSync(staging, { recursive: true, force: true });
   console.log(`[build:sdk-zips] ${zipPath}`);

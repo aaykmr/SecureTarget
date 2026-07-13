@@ -1,0 +1,153 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  width: 100%;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+  width: 100%;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-6);
+
+  @media (max-width: 640px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.sectionTitle {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-body-sm);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+}
+
+.checkbox {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: var(--space-5) !important;
+  font-size: var(--text-body-sm);
+  color: var(--color-fg-default);
+  cursor: pointer;
+
+  input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--color-accent-interactive);
+    cursor: pointer;
+  }
+}
+
+.error {
+  margin: 0;
+  color: var(--color-accent-error);
+  font-size: var(--text-body-sm);
+}
+
+.success {
+  margin: 0;
+  color: var(--color-accent-success);
+  font-size: var(--text-body-sm);
+}
+
+.linkList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.linkItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-7);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-card-border);
+  background: var(--dash-surface-gradient);
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--color-accent-interactive) 30%, var(--color-card-border));
+    transform: translateY(-1px);
+  }
+}
+
+.url {
+  font-size: var(--text-caption);
+  word-break: break-all;
+  color: var(--color-fg-muted);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  padding: var(--space-5) var(--space-6);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-canvas) 55%, transparent);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.muted {
+  color: var(--color-fg-subtle);
+}
+
+.codeNote {
+  margin: 0;
+  font-size: var(--text-caption-sm);
+  line-height: 1.55;
+  color: var(--color-fg-muted);
+
+  code {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 0.95em;
+    color: var(--color-fg-subtle);
+  }
+}
+
+.emptyList {
+  margin: 0;
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--color-fg-muted);
+  font-size: var(--text-body-sm);
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--color-border-default);
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-caption-sm);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  border: 1px solid var(--color-border-default);
+  background: color-mix(in srgb, var(--color-surface-elevated) 70%, transparent);
+  color: var(--color-fg-muted);
+}
+
+.pillBrand {
+  border-color: color-mix(in srgb, var(--color-accent-interactive) 40%, transparent);
+  background: color-mix(in srgb, var(--color-accent-interactive) 12%, transparent);
+  color: var(--color-accent-interactive);
+}
