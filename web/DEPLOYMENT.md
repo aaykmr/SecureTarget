@@ -31,9 +31,9 @@ Manual Postgres URL (Docker Compose): `postgres://securetarget:securetarget@loca
 ## Build
 
 ```bash
-VITE_API_URL=https://api.yourdomain.com \
-VITE_INGEST_URL=https://api.yourdomain.com \
-VITE_APP_URL=https://app.yourdomain.com \
+VITE_API_URL=https://api.eventiqn.trusttargets.com \
+VITE_INGEST_URL=https://api.eventiqn.trusttargets.com \
+VITE_APP_URL=https://eventiqn.trusttargets.com \
 npm run build --workspace web
 ```
 
@@ -45,17 +45,22 @@ SDK bundles (`public/sdk.js`, `public/downloads/*.zip`) are copied during `prebu
 
 Workflow: `.github/workflows/deploy-web.yml`
 
-Required secrets:
+Production targets (hardcoded in `.github/workflows/deploy-web.yml`):
+
+| Setting | Value |
+|---------|--------|
+| S3 bucket | `prod-eventiqn` |
+| CloudFront distribution | `E1NEODDOVZAKG0` |
+| `VITE_API_URL` / `VITE_INGEST_URL` | `https://api.eventiqn.trusttargets.com` |
+| `VITE_APP_URL` | `https://eventiqn.trusttargets.com` |
+
+Required GitHub secrets (same as `deploy-site.yml`):
 
 | Secret | Purpose |
 |--------|---------|
-| `WEB_S3_BUCKET` | S3 bucket for the SPA |
-| `WEB_CLOUDFRONT_DOMAIN` | CloudFront domain (fallback lookup) |
-| `WEB_CLOUDFRONT_DISTRIBUTION_ID` | Optional — skips domain lookup |
-| `VITE_API_URL` | Backend URL baked into the build |
-| `VITE_INGEST_URL` | Ingest URL for integration snippets |
-| `VITE_APP_URL` | Public dashboard origin (SDK script URL) |
-| `AWS_*` | Same as site deploy |
+| `AWS_ACCESS_KEY_ID` | S3 sync + CloudFront invalidation |
+| `AWS_SECRET_ACCESS_KEY` | Same IAM user as site deploy |
+| `AWS_REGION` | e.g. `us-east-1` |
 
 ## Backend on EC2
 

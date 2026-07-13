@@ -18,8 +18,11 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  S3_BUCKET: ${{ secrets.WEB_S3_BUCKET }}
-  CLOUDFRONT_DOMAIN: ${{ secrets.WEB_CLOUDFRONT_DOMAIN }}
+  S3_BUCKET: prod-eventiqn
+  CLOUDFRONT_DISTRIBUTION_ID: E1NEODDOVZAKG0
+  VITE_API_URL: https://api.eventiqn.trusttargets.com
+  VITE_INGEST_URL: https://api.eventiqn.trusttargets.com
+  VITE_APP_URL: https://eventiqn.trusttargets.com
 
 jobs:
   deploy:
@@ -44,9 +47,9 @@ jobs:
       - name: Build web
         run: npm run build --workspace web
         env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
-          VITE_INGEST_URL: ${{ secrets.VITE_INGEST_URL }}
-          VITE_APP_URL: ${{ secrets.VITE_APP_URL }}
+          VITE_API_URL: ${{ env.VITE_API_URL }}
+          VITE_INGEST_URL: ${{ env.VITE_INGEST_URL }}
+          VITE_APP_URL: ${{ env.VITE_APP_URL }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -80,17 +83,7 @@ jobs:
 
       - name: Invalidate CloudFront cache
         run: |
-          DIST_ID="${{ secrets.WEB_CLOUDFRONT_DISTRIBUTION_ID }}"
-          if [ -z "$DIST_ID" ]; then
-            DIST_ID=$(aws cloudfront list-distributions \
-              --query "DistributionList.Items[?DomainName=='${CLOUDFRONT_DOMAIN}'].Id | [0]" \
-              --output text)
-          fi
-          if [ -z "$DIST_ID" ] || [ "$DIST_ID" = "None" ]; then
-            echo "CloudFront distribution not found for ${CLOUDFRONT_DOMAIN}"
-            exit 1
-          fi
-          echo "Invalidating distribution ${DIST_ID}"
+          echo "Invalidating distribution ${CLOUDFRONT_DISTRIBUTION_ID}"
           aws cloudfront create-invalidation \
-            --distribution-id "$DIST_ID" \
+            --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" \
             --paths "/*"

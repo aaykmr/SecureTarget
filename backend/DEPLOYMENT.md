@@ -442,7 +442,6 @@ npm run dev:web
 
 | Secret | Used for |
 |--------|----------|
-| `WEB_S3_BUCKET`, `WEB_CLOUDFRONT_*` | S3 + CloudFront |
-| `VITE_API_URL`, `VITE_INGEST_URL` | `https://api.yourdomain.com` |
-| `VITE_APP_URL` | CloudFront app URL |
-| `AWS_*` | AWS credentials |
+| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` | Same IAM creds as site deploy (S3 `prod-eventiqn`, CloudFront `E1NEODDOVZAKG0`) |
+
+`VITE_*` URLs are set in `deploy-web.yml` for `eventiqn.trusttargets.com`.
