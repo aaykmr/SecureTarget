@@ -1,0 +1,16 @@
+# Docker build context exclusions (web image)
+node_modules
+**/node_modules
+.git
+.github
+**/.next
+**/out
+**/.env
+**/.env.*
+!**/.env.example
+site
+backend
+agent-tools
+*.md
+!web/DEPLOYMENT.md
+*.sqlite

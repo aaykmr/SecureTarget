@@ -1,3 +1,4 @@
+import type pg from "pg";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Database } from "better-sqlite3";
 import { validateIngestEvent } from "../../../packages/contracts/src/events.js";
@@ -8,13 +9,14 @@ import {
   resolveAndStoreAttribution,
   storeClick,
   storeLoginToken,
-  storeSdkEvent
+  storeSdkEvent,
 } from "../services/attribution.js";
-import { resolveCompanyIdFromApiKey } from "../services/apiKeyAuth.js";
+import { resolveCompanyIdFromApiKeyAsync } from "../services/apiKeyAuth.js";
 import { resolveInstallAttribution } from "../services/installAttribution.js";
 import { storeInstallSignal } from "../services/deviceIdentity.js";
 import { sendPartnerPostback } from "../services/partnerPostbacks.js";
 import { isClientSessionValid, touchClientSession } from "../services/clientSession.js";
+import type { IngestDb } from "../db/ingestDb.js";
 
 async function readJson(req: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = [];
@@ -48,52 +50,54 @@ function ingestSessionRequired(): boolean {
   return v === "1" || v === "true";
 }
 
-function assertIngestSession(
-  db: Database,
+async function assertIngestSession(
+  db: Database | pg.Pool,
   companyId: string,
   req: IncomingMessage,
-  res: ServerResponse
-): boolean {
+  res: ServerResponse,
+): Promise<boolean> {
   const sessionId = getSessionIdHeader(req);
   if (ingestSessionRequired() && !sessionId) {
     sendJson(res, 401, {
-      error: "Missing x-session-id. Create a session with POST /v1/session/bootstrap (send device details once), then retry."
+      error: "Missing x-session-id. Create a session with POST /v1/session/bootstrap (send device details once), then retry.",
     });
     return false;
   }
-  if (sessionId && !isClientSessionValid(db, companyId, sessionId)) {
+  if (sessionId && !(await isClientSessionValid(db, companyId, sessionId))) {
     sendJson(res, 403, { error: "Invalid or revoked session" });
     return false;
   }
   return true;
 }
 
-function touchIngestSession(db: Database, companyId: string, req: IncomingMessage): void {
+async function touchIngestSession(db: Database | pg.Pool, companyId: string, req: IncomingMessage): Promise<void> {
   const sessionId = getSessionIdHeader(req);
   if (sessionId) {
-    touchClientSession(db, companyId, sessionId);
+    await touchClientSession(db, companyId, sessionId);
   }
 }
 
-export async function handleIngest(
-  req: IncomingMessage,
-  res: ServerResponse,
-  db: Database,
-  deviceDb: Database
-): Promise<void> {
+export async function handleIngest(req: IncomingMessage, res: ServerResponse, ingestDb: IngestDb): Promise<void> {
+  const customer = ingestDb.customer();
+  const device = ingestDb.device();
+  const pgPool = ingestDb.pool();
+
   const apiKey = getApiKeyHeader(req);
   if (!apiKey) {
     sendJson(res, 401, { error: "Missing x-api-key" });
     return;
   }
 
-  const companyIdFromKey = resolveCompanyIdFromApiKey(db, apiKey);
+  const companyIdFromKey = await resolveCompanyIdFromApiKeyAsync(
+    ingestDb.mode === "sqlite" ? { sqlite: ingestDb.customerSqlite() } : { pg: pgPool },
+    apiKey,
+  );
   if (!companyIdFromKey) {
     sendJson(res, 401, { error: "Invalid or revoked API key" });
     return;
   }
 
-  if (!assertIngestSession(db, companyIdFromKey, req, res)) {
+  if (!(await assertIngestSession(customer, companyIdFromKey, req, res))) {
     return;
   }
 
@@ -102,43 +106,43 @@ export async function handleIngest(
     const base = typeof raw === "object" && raw !== null && !Array.isArray(raw) ? raw : {};
     const merged = { ...base, companyId: companyIdFromKey };
     const payload = validateIngestEvent(merged);
-    if (isEventProcessed(db, payload.eventId)) {
-      touchIngestSession(db, companyIdFromKey, req);
+    if (await isEventProcessed(customer, payload.eventId)) {
+      await touchIngestSession(customer, companyIdFromKey, req);
       sendJson(res, 200, { ok: true, deduped: true });
       return;
     }
 
     if (payload.actionType === "record") {
-      storeClick(db, payload);
+      await storeClick(customer, payload);
       const salt = tokenSaltForCompany(payload.companyId);
       const tokenHash = payload.token ? hashToken(payload.token, salt) : undefined;
-      storeSdkEvent(db, payload.companyId, payload.actionType, payload, tokenHash);
-      markEventProcessed(db, payload.eventId, payload.companyId, payload.actionType);
-      touchIngestSession(db, companyIdFromKey, req);
+      await storeSdkEvent(customer, payload.companyId, payload.actionType, payload, tokenHash);
+      await markEventProcessed(customer, payload.eventId, payload.companyId, payload.actionType);
+      await touchIngestSession(customer, companyIdFromKey, req);
       sendJson(res, 202, { ok: true });
       return;
     }
 
     if (payload.actionType === "login") {
-      const tokenHash = storeLoginToken(db, payload);
-      storeSdkEvent(db, payload.companyId, payload.actionType, { ...payload, token: "[redacted]" }, tokenHash);
-      markEventProcessed(db, payload.eventId, payload.companyId, payload.actionType);
-      touchIngestSession(db, companyIdFromKey, req);
+      const tokenHash = await storeLoginToken(customer, payload);
+      await storeSdkEvent(customer, payload.companyId, payload.actionType, { ...payload, token: "[redacted]" }, tokenHash);
+      await markEventProcessed(customer, payload.eventId, payload.companyId, payload.actionType);
+      await touchIngestSession(customer, companyIdFromKey, req);
       sendJson(res, 202, { ok: true });
       return;
     }
 
     if (payload.actionType === "conversion") {
-      const result = resolveAndStoreAttribution(db, payload);
+      const result = await resolveAndStoreAttribution(customer, payload);
       const salt = tokenSaltForCompany(payload.companyId);
       const tokenHash = hashToken(payload.token, salt);
-      storeSdkEvent(db, payload.companyId, payload.actionType, { ...payload, token: "[redacted]" }, tokenHash);
-      markEventProcessed(db, payload.eventId, payload.companyId, payload.actionType);
-      touchIngestSession(db, companyIdFromKey, req);
-      void sendPartnerPostback(db, deviceDb, {
+      await storeSdkEvent(customer, payload.companyId, payload.actionType, { ...payload, token: "[redacted]" }, tokenHash);
+      await markEventProcessed(customer, payload.eventId, payload.companyId, payload.actionType);
+      await touchIngestSession(customer, companyIdFromKey, req);
+      void sendPartnerPostback(customer, device, {
         companyId: payload.companyId,
         eventType: "conversion",
-        eventId: payload.eventId
+        eventId: payload.eventId,
       });
       sendJson(res, 202, { ok: true, attribution: result });
       return;
@@ -147,7 +151,7 @@ export async function handleIngest(
     if (payload.actionType === "install") {
       const sessionId = getSessionIdHeader(req) ?? payload.token;
       if (payload.installReferrer || payload.deepLinkUrl || payload.clickId) {
-        storeInstallSignal(deviceDb, {
+        await storeInstallSignal(device, {
           companyId: payload.companyId,
           sessionId,
           signalType: "install",
@@ -155,17 +159,17 @@ export async function handleIngest(
             installReferrer: payload.installReferrer,
             deepLinkUrl: payload.deepLinkUrl,
             clickId: payload.clickId,
-            isReinstall: payload.isReinstall
+            isReinstall: payload.isReinstall,
           },
-          receivedAt: payload.occurredAt
+          receivedAt: payload.occurredAt,
         });
       }
-      const attribution = resolveInstallAttribution(db, deviceDb, payload, sessionId);
+      const attribution = await resolveInstallAttribution(customer, device, payload, sessionId);
       const salt = tokenSaltForCompany(payload.companyId);
       const tokenHash = hashToken(payload.token, salt);
-      storeSdkEvent(db, payload.companyId, payload.actionType, { ...payload, token: "[redacted]" }, tokenHash);
-      markEventProcessed(db, payload.eventId, payload.companyId, payload.actionType);
-      touchIngestSession(db, companyIdFromKey, req);
+      await storeSdkEvent(customer, payload.companyId, payload.actionType, { ...payload, token: "[redacted]" }, tokenHash);
+      await markEventProcessed(customer, payload.eventId, payload.companyId, payload.actionType);
+      await touchIngestSession(customer, companyIdFromKey, req);
       sendJson(res, 202, { ok: true, attribution });
       return;
     }
@@ -174,9 +178,9 @@ export async function handleIngest(
       const salt = tokenSaltForCompany(payload.companyId);
       const tokenHash = payload.token ? hashToken(payload.token, salt) : undefined;
       const stored = { ...payload, ...(payload.token ? { token: "[redacted]" as const } : {}) };
-      storeSdkEvent(db, payload.companyId, "custom", stored, tokenHash);
-      markEventProcessed(db, payload.eventId, payload.companyId, payload.actionType);
-      touchIngestSession(db, companyIdFromKey, req);
+      await storeSdkEvent(customer, payload.companyId, "custom", stored, tokenHash);
+      await markEventProcessed(customer, payload.eventId, payload.companyId, payload.actionType);
+      await touchIngestSession(customer, companyIdFromKey, req);
       sendJson(res, 202, { ok: true });
       return;
     }

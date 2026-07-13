@@ -1,0 +1,49 @@
+# Run on the **database EC2** instance (Postgres + Redis).
+# Usage:
+#   cp .env.db.example .env.db
+#   docker compose -f docker-compose.db.yml --env-file .env.db up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: securetarget-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-securetarget}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.db}
+      POSTGRES_DB: ${POSTGRES_DB:-securetarget}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - securetarget_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-securetarget} -d ${POSTGRES_DB:-securetarget}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: securetarget-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env.db}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - securetarget_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  securetarget_pgdata:
+  securetarget_redisdata:

@@ -1,4 +1,5 @@
 import type { Database } from "better-sqlite3";
+import type pg from "pg";
 import {
   apiKeyPepperFingerprint,
   getApiKeyPepper,
@@ -18,7 +19,46 @@ function logIngestDebug(message: string, data?: Record<string, unknown>): void {
   console.log(`[ingest:api-key] ${message}${payload}`);
 }
 
-export function resolveCompanyIdFromApiKey(db: Database, apiKeyHeader: string): string | null {
+function logResolveAttempt(apiKeyHeader: string): string {
+  const trimmed = apiKeyHeader.trim();
+  const keyHash = hashApiKey(trimmed);
+  const pepper = getApiKeyPepper();
+  const pepperSource =
+    process.env.API_KEY_PEPPER != null && process.env.API_KEY_PEPPER !== ""
+      ? "API_KEY_PEPPER"
+      : process.env.APP_SECRET != null && process.env.APP_SECRET !== ""
+        ? "APP_SECRET"
+        : "default-dev-pepper";
+
+  logIngestDebug("resolving", {
+    keyLength: trimmed.length,
+    keyPrefix: `${trimmed.slice(0, 12)}${trimmed.length > 12 ? "…" : ""}`,
+    hashPrefix: `${keyHash.slice(0, 16)}…`,
+    pepperSource,
+    pepperLength: pepper.length,
+    pepperFingerprint: apiKeyPepperFingerprint(pepper),
+    store: "sqlite",
+  });
+  return keyHash;
+}
+
+export async function resolveCompanyIdFromApiKeyAsync(
+  stores: { sqlite?: Database; pg?: pg.Pool | null },
+  apiKeyHeader: string,
+): Promise<string | null> {
+  if (stores.pg) {
+    return resolveCompanyIdFromApiKeyPg(stores.pg, apiKeyHeader);
+  }
+  if (stores.sqlite) {
+    return resolveCompanyIdFromApiKey(stores.sqlite, apiKeyHeader);
+  }
+  return null;
+}
+
+export async function resolveCompanyIdFromApiKeyPg(
+  db: pg.Pool,
+  apiKeyHeader: string,
+): Promise<string | null> {
   const trimmed = apiKeyHeader.trim();
   if (!trimmed) return null;
   const keyHash = hashApiKey(trimmed);
@@ -36,8 +76,37 @@ export function resolveCompanyIdFromApiKey(db: Database, apiKeyHeader: string): 
     hashPrefix: `${keyHash.slice(0, 16)}…`,
     pepperSource,
     pepperLength: pepper.length,
-    pepperFingerprint: apiKeyPepperFingerprint(pepper)
+    pepperFingerprint: apiKeyPepperFingerprint(pepper),
+    store: "postgres",
   });
+
+  const billingJoin = isCashfreeBillingEnforced()
+    ? ` INNER JOIN billing_subscriptions bs ON bs.user_id = p.user_id AND bs.status IN ('ACTIVE', 'BANK_APPROVAL_PENDING')`
+    : "";
+
+  const { rows } = await db.query<{ company_id: string }>(
+    `SELECT p.company_id AS company_id
+     FROM api_keys k
+     INNER JOIN projects p ON k.project_id = p.id${billingJoin}
+     WHERE k.key_hash = $1 AND k.revoked_at IS NULL`,
+    [keyHash],
+  );
+
+  if (rows[0]?.company_id) {
+    logIngestDebug("ok", { companyId: rows[0].company_id });
+    return rows[0].company_id;
+  }
+
+  logIngestDebug("no active key for hash in postgres", {
+    hint: "Create keys via dashboard API; ensure API_KEY_PEPPER matches between dashboard and ingest",
+  });
+  return null;
+}
+
+export function resolveCompanyIdFromApiKey(db: Database, apiKeyHeader: string): string | null {
+  const trimmed = apiKeyHeader.trim();
+  if (!trimmed) return null;
+  const keyHash = logResolveAttempt(apiKeyHeader);
 
   const billingJoin = isCashfreeBillingEnforced()
     ? ` INNER JOIN billing_subscriptions bs ON bs.user_id = p.user_id AND bs.status IN ('ACTIVE', 'BANK_APPROVAL_PENDING')`

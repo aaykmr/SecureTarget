@@ -1,4 +1,6 @@
 node_modules/
 .env
+web/.env
 securetarget.sqlite
+securetarget-device.sqlite
 site/dist/

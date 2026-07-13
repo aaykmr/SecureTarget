@@ -11,9 +11,15 @@
   ],
   "scripts": {
     "test": "tsx --test backend/test/**/*.test.ts",
+    "test:pg": "npm run db:up && node scripts/wait-for-postgres.mjs && tsx --test backend/test/apiKeyResolvePg.test.ts",
+    "db:up": "docker compose up -d --wait postgres redis",
+    "db:down": "docker compose down",
+    "db:reset": "docker compose down -v && docker compose up -d --wait postgres",
+    "db:logs": "docker compose logs -f postgres",
     "dev:web": "npm run dev --workspace web",
     "dev:site": "npm run dev --workspace @securetarget/site",
-    "dev:ingest": "npm run start --workspace @securetarget/backend",
+    "dev:backend": "npm run db:up && node scripts/wait-for-postgres.mjs && npm run start --workspace @securetarget/backend",
+    "dev:ingest": "npm run dev:backend",
     "build:sdk-browser": "npm run build:browser --workspace @securetarget/web-sdk",
     "build:sdk-zips": "node scripts/build-sdk-zips.mjs"
   },

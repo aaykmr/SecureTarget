@@ -1,7 +1,9 @@
 import type { Database } from "better-sqlite3";
+import type pg from "pg";
 import type { PendingClickRow } from "../routes/clickRedirect.js";
 import { extractClickIdFromReferrer, extractClickIdFromUrl } from "../routes/clickRedirect.js";
 import { getIdentityForSession } from "./deviceIdentity.js";
+import { isPgConn, pgQuery, pgQueryOne } from "../db/ingestDb.js";
 
 export interface MatchCandidate {
   clickId?: string;
@@ -31,13 +33,22 @@ export interface MatchInput {
   windowHours: number;
 }
 
-export function matchByClickId(
-  deviceDb: Database,
-  clickId: string
-): MatchCandidate | null {
-  const pending = deviceDb
-    .prepare(`SELECT * FROM pending_clicks WHERE click_id = ? AND matched_at IS NULL`)
-    .get(clickId) as PendingClickRow | undefined;
+export async function matchByClickId(
+  deviceDb: Database | pg.Pool,
+  clickId: string,
+): Promise<MatchCandidate | null> {
+  let pending: PendingClickRow | undefined;
+  if (isPgConn(deviceDb)) {
+    pending = await pgQueryOne<PendingClickRow>(
+      deviceDb,
+      `SELECT * FROM pending_clicks WHERE click_id = $1 AND matched_at IS NULL`,
+      [clickId],
+    );
+  } else {
+    pending = deviceDb
+      .prepare(`SELECT * FROM pending_clicks WHERE click_id = ? AND matched_at IS NULL`)
+      .get(clickId) as PendingClickRow | undefined;
+  }
   if (!pending) return null;
   return {
     clickId,
@@ -50,53 +61,86 @@ export function matchByClickId(
     creativeId: pending.creative_id,
     channel: pending.channel,
     deepLinkValue: pending.deep_link_value,
-    inputs: { clickId }
+    inputs: { clickId },
   };
 }
 
-export function matchByAdvertisingId(
-  deviceDb: Database,
+export async function matchByAdvertisingId(
+  deviceDb: Database | pg.Pool,
   companyId: string,
   sessionId: string,
   windowHours: number,
-  occurredAt: string
-): MatchCandidate | null {
-  const identity = getIdentityForSession(deviceDb, companyId, sessionId);
+  occurredAt: string,
+): Promise<MatchCandidate | null> {
+  const identity = await getIdentityForSession(deviceDb, companyId, sessionId);
   if (!identity) return null;
   const lowerBound = new Date(Date.parse(occurredAt) - windowHours * 3600 * 1000).toISOString();
 
   let pending: PendingClickRow | undefined;
-  if (identity.idfa) {
-    pending = deviceDb
-      .prepare(
+  if (isPgConn(deviceDb)) {
+    if (identity.idfa) {
+      pending = await pgQueryOne<PendingClickRow>(
+        deviceDb,
         `SELECT * FROM pending_clicks
-         WHERE company_id = ? AND idfa = ? AND matched_at IS NULL AND clicked_at >= ?
-         ORDER BY clicked_at DESC LIMIT 1`
-      )
-      .get(companyId, identity.idfa, lowerBound) as PendingClickRow | undefined;
-  }
-  if (!pending && identity.gaid) {
-    pending = deviceDb
-      .prepare(
+         WHERE company_id = $1 AND idfa = $2 AND matched_at IS NULL AND clicked_at >= $3
+         ORDER BY clicked_at DESC LIMIT 1`,
+        [companyId, identity.idfa, lowerBound],
+      );
+    }
+    if (!pending && identity.gaid) {
+      pending = await pgQueryOne<PendingClickRow>(
+        deviceDb,
         `SELECT * FROM pending_clicks
-         WHERE company_id = ? AND gaid = ? AND matched_at IS NULL AND clicked_at >= ?
-         ORDER BY clicked_at DESC LIMIT 1`
-      )
-      .get(companyId, identity.gaid, lowerBound) as PendingClickRow | undefined;
-  }
-
-  if (!pending) {
-    pending = deviceDb
-      .prepare(
+         WHERE company_id = $1 AND gaid = $2 AND matched_at IS NULL AND clicked_at >= $3
+         ORDER BY clicked_at DESC LIMIT 1`,
+        [companyId, identity.gaid, lowerBound],
+      );
+    }
+    if (!pending) {
+      pending = await pgQueryOne<PendingClickRow>(
+        deviceDb,
         `SELECT pc.* FROM pending_clicks pc
          JOIN device_identities di ON di.company_id = pc.company_id
          JOIN identity_sessions isess ON isess.identity_id = di.id
-         WHERE isess.session_id = ? AND isess.company_id = ?
-           AND pc.matched_at IS NULL AND pc.clicked_at >= ?
+         WHERE isess.session_id = $1 AND isess.company_id = $2
+           AND pc.matched_at IS NULL AND pc.clicked_at >= $3
            AND (di.idfa IS NOT NULL OR di.gaid IS NOT NULL)
-         ORDER BY pc.clicked_at DESC LIMIT 1`
-      )
-      .get(sessionId, companyId, lowerBound) as PendingClickRow | undefined;
+         ORDER BY pc.clicked_at DESC LIMIT 1`,
+        [sessionId, companyId, lowerBound],
+      );
+    }
+  } else {
+    if (identity.idfa) {
+      pending = deviceDb
+        .prepare(
+          `SELECT * FROM pending_clicks
+           WHERE company_id = ? AND idfa = ? AND matched_at IS NULL AND clicked_at >= ?
+           ORDER BY clicked_at DESC LIMIT 1`,
+        )
+        .get(companyId, identity.idfa, lowerBound) as PendingClickRow | undefined;
+    }
+    if (!pending && identity.gaid) {
+      pending = deviceDb
+        .prepare(
+          `SELECT * FROM pending_clicks
+           WHERE company_id = ? AND gaid = ? AND matched_at IS NULL AND clicked_at >= ?
+           ORDER BY clicked_at DESC LIMIT 1`,
+        )
+        .get(companyId, identity.gaid, lowerBound) as PendingClickRow | undefined;
+    }
+    if (!pending) {
+      pending = deviceDb
+        .prepare(
+          `SELECT pc.* FROM pending_clicks pc
+           JOIN device_identities di ON di.company_id = pc.company_id
+           JOIN identity_sessions isess ON isess.identity_id = di.id
+           WHERE isess.session_id = ? AND isess.company_id = ?
+             AND pc.matched_at IS NULL AND pc.clicked_at >= ?
+             AND (di.idfa IS NOT NULL OR di.gaid IS NOT NULL)
+           ORDER BY pc.clicked_at DESC LIMIT 1`,
+        )
+        .get(sessionId, companyId, lowerBound) as PendingClickRow | undefined;
+    }
   }
 
   if (!pending) return null;
@@ -111,36 +155,47 @@ export function matchByAdvertisingId(
     creativeId: pending.creative_id,
     channel: pending.channel,
     deepLinkValue: pending.deep_link_value,
-    inputs: { idfa: identity.idfa, gaid: identity.gaid }
+    inputs: { idfa: identity.idfa, gaid: identity.gaid },
   };
 }
 
-export function matchBySessionRecord(
-  customerDb: Database,
+export async function matchBySessionRecord(
+  customerDb: Database | pg.Pool,
   companyId: string,
   tokenHash: string,
   windowHours: number,
-  occurredAt: string
-): MatchCandidate | null {
+  occurredAt: string,
+): Promise<MatchCandidate | null> {
   const lowerBound = new Date(Date.parse(occurredAt) - windowHours * 3600 * 1000).toISOString();
-  const click = customerDb
-    .prepare(
+  type ClickRow = {
+    id: string;
+    media_source: string | null;
+    campaign_id: string | null;
+    adgroup_id: string | null;
+    creative_id: string | null;
+    channel: string | null;
+    metadata_json: string | null;
+  };
+  let click: ClickRow | undefined;
+  if (isPgConn(customerDb)) {
+    click = await pgQueryOne<ClickRow>(
+      customerDb,
       `SELECT id, media_source, campaign_id, adgroup_id, creative_id, channel, metadata_json
        FROM click_events
-       WHERE company_id = ? AND token_hash = ? AND clicked_at >= ?
-       ORDER BY clicked_at DESC LIMIT 1`
-    )
-    .get(companyId, tokenHash, lowerBound) as
-    | {
-        id: string;
-        media_source: string | null;
-        campaign_id: string | null;
-        adgroup_id: string | null;
-        creative_id: string | null;
-        channel: string | null;
-        metadata_json: string | null;
-      }
-    | undefined;
+       WHERE company_id = $1 AND token_hash = $2 AND clicked_at >= $3
+       ORDER BY clicked_at DESC LIMIT 1`,
+      [companyId, tokenHash, lowerBound],
+    );
+  } else {
+    click = customerDb
+      .prepare(
+        `SELECT id, media_source, campaign_id, adgroup_id, creative_id, channel, metadata_json
+         FROM click_events
+         WHERE company_id = ? AND token_hash = ? AND clicked_at >= ?
+         ORDER BY clicked_at DESC LIMIT 1`,
+      )
+      .get(companyId, tokenHash, lowerBound) as ClickRow | undefined;
+  }
 
   if (!click) return null;
   let deepLinkValue: string | null = null;
@@ -161,39 +216,65 @@ export function matchBySessionRecord(
     creativeId: click.creative_id,
     channel: click.channel,
     deepLinkValue,
-    inputs: { clickEventId: click.id }
+    inputs: { clickEventId: click.id },
   };
 }
 
-export function matchProbabilistic(
-  deviceDb: Database,
+export async function matchProbabilistic(
+  deviceDb: Database | pg.Pool,
   companyId: string,
   sessionId: string,
   windowHours: number,
   occurredAt: string,
-  minConfidence: number
-): MatchCandidate | null {
-  const snapshot = deviceDb
-    .prepare(
-      `SELECT ds.ip, ds.user_agent AS userAgent, di.platform
+  minConfidence: number,
+): Promise<MatchCandidate | null> {
+  type SnapshotRow = { ip: string | null; userAgent: string | null; platform: string };
+  let snapshot: SnapshotRow | undefined;
+  if (isPgConn(deviceDb)) {
+    snapshot = await pgQueryOne<SnapshotRow>(
+      deviceDb,
+      `SELECT ds.ip, ds.user_agent AS "userAgent", di.platform
        FROM device_snapshots ds
        JOIN identity_sessions isess ON isess.identity_id = ds.identity_id AND isess.session_id = ds.session_id
        JOIN device_identities di ON di.id = ds.identity_id
-       WHERE ds.session_id = ? AND ds.company_id = ?
-       ORDER BY ds.occurred_at DESC LIMIT 1`
-    )
-    .get(sessionId, companyId) as { ip: string | null; userAgent: string | null; platform: string } | undefined;
+       WHERE ds.session_id = $1 AND ds.company_id = $2
+       ORDER BY ds.occurred_at DESC LIMIT 1`,
+      [sessionId, companyId],
+    );
+  } else {
+    snapshot = deviceDb
+      .prepare(
+        `SELECT ds.ip, ds.user_agent AS userAgent, di.platform
+         FROM device_snapshots ds
+         JOIN identity_sessions isess ON isess.identity_id = ds.identity_id AND isess.session_id = ds.session_id
+         JOIN device_identities di ON di.id = ds.identity_id
+         WHERE ds.session_id = ? AND ds.company_id = ?
+         ORDER BY ds.occurred_at DESC LIMIT 1`,
+      )
+      .get(sessionId, companyId) as SnapshotRow | undefined;
+  }
 
   if (!snapshot?.ip) return null;
   const lowerBound = new Date(Date.parse(occurredAt) - windowHours * 3600 * 1000).toISOString();
 
-  const candidates = deviceDb
-    .prepare(
+  let candidates: PendingClickRow[];
+  if (isPgConn(deviceDb)) {
+    candidates = await pgQuery<PendingClickRow>(
+      deviceDb,
       `SELECT * FROM pending_clicks
-       WHERE company_id = ? AND matched_at IS NULL AND clicked_at >= ? AND ip = ?
-       ORDER BY clicked_at DESC LIMIT 5`
-    )
-    .all(companyId, lowerBound, snapshot.ip) as PendingClickRow[];
+       WHERE company_id = $1 AND matched_at IS NULL AND clicked_at >= $2 AND ip = $3
+       ORDER BY clicked_at DESC LIMIT 5`,
+      [companyId, lowerBound, snapshot.ip],
+    );
+  } else {
+    candidates = deviceDb
+      .prepare(
+        `SELECT * FROM pending_clicks
+         WHERE company_id = ? AND matched_at IS NULL AND clicked_at >= ? AND ip = ?
+         ORDER BY clicked_at DESC LIMIT 5`,
+      )
+      .all(companyId, lowerBound, snapshot.ip) as PendingClickRow[];
+  }
 
   for (const pending of candidates) {
     let confidence = 0.5;
@@ -219,7 +300,7 @@ export function matchProbabilistic(
         creativeId: pending.creative_id,
         channel: pending.channel,
         deepLinkValue: pending.deep_link_value,
-        inputs: { ip: snapshot.ip, platform: snapshot.platform }
+        inputs: { ip: snapshot.ip, platform: snapshot.platform },
       };
     }
   }
@@ -239,27 +320,27 @@ export function resolveClickIdFromSignals(input: MatchInput): string | null {
   return null;
 }
 
-export function runMatchRules(
-  customerDb: Database,
-  deviceDb: Database,
+export async function runMatchRules(
+  customerDb: Database | pg.Pool,
+  deviceDb: Database | pg.Pool,
   input: MatchInput,
-  tokenHash: string
-): MatchCandidate | null {
+  tokenHash: string,
+): Promise<MatchCandidate | null> {
   const clickId = resolveClickIdFromSignals(input);
   if (clickId) {
-    const match = matchByClickId(deviceDb, clickId);
+    const match = await matchByClickId(deviceDb, clickId);
     if (match) return match;
   }
 
-  const adMatch = matchByAdvertisingId(deviceDb, input.companyId, input.sessionId, input.windowHours, input.occurredAt);
+  const adMatch = await matchByAdvertisingId(deviceDb, input.companyId, input.sessionId, input.windowHours, input.occurredAt);
   if (adMatch) return adMatch;
 
-  const sessionMatch = matchBySessionRecord(
+  const sessionMatch = await matchBySessionRecord(
     customerDb,
     input.companyId,
     tokenHash,
     input.windowHours,
-    input.occurredAt
+    input.occurredAt,
   );
   if (sessionMatch) return sessionMatch;
 
@@ -270,7 +351,7 @@ export function runMatchRules(
       input.sessionId,
       input.windowHours,
       input.occurredAt,
-      input.minConfidence
+      input.minConfidence,
     );
   }
 

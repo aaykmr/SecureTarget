@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 import type { Database } from "better-sqlite3";
+import type pg from "pg";
+import { isPgConn, pgExecute, pgQuery, pgQueryOne } from "../db/ingestDb.js";
 
 export interface TrackingLinkRow {
   id: string;
@@ -24,60 +26,43 @@ export interface CampaignParams {
   clickId?: string;
 }
 
-export function getTrackingLinkBySlug(db: Database, companyId: string, slug: string): TrackingLinkRow | undefined {
-  return db
-    .prepare(`SELECT * FROM tracking_links WHERE company_id = ? AND slug = ?`)
-    .get(companyId, slug) as TrackingLinkRow | undefined;
+export async function getTrackingLinkBySlug(
+  db: Database | pg.Pool,
+  companyId: string,
+  slug: string,
+): Promise<TrackingLinkRow | undefined> {
+  if (isPgConn(db)) {
+    return pgQueryOne<TrackingLinkRow>(db, `SELECT * FROM tracking_links WHERE company_id = $1 AND slug = $2`, [
+      companyId,
+      slug,
+    ]);
+  }
+  return db.prepare(`SELECT * FROM tracking_links WHERE company_id = ? AND slug = ?`).get(companyId, slug) as
+    | TrackingLinkRow
+    | undefined;
 }
 
-export function getTrackingLinkBySlugGlobal(db: Database, slug: string): TrackingLinkRow | undefined {
+export async function getTrackingLinkBySlugGlobal(
+  db: Database | pg.Pool,
+  slug: string,
+): Promise<TrackingLinkRow | undefined> {
+  if (isPgConn(db)) {
+    return pgQueryOne<TrackingLinkRow>(db, `SELECT * FROM tracking_links WHERE slug = $1 LIMIT 1`, [slug]);
+  }
   return db.prepare(`SELECT * FROM tracking_links WHERE slug = ? LIMIT 1`).get(slug) as TrackingLinkRow | undefined;
 }
 
-export function listTrackingLinks(db: Database, companyId: string): TrackingLinkRow[] {
-  return db
-    .prepare(`SELECT * FROM tracking_links WHERE company_id = ? ORDER BY created_at DESC`)
-    .all(companyId) as TrackingLinkRow[];
-}
-
-export function createTrackingLink(
-  db: Database,
-  input: {
-    companyId: string;
-    name: string;
-    slug: string;
-    destinationType: string;
-    iosUrl?: string;
-    androidUrl?: string;
-    webUrl?: string;
-    defaultParams?: Record<string, unknown>;
+export async function listTrackingLinks(db: Database | pg.Pool, companyId: string): Promise<TrackingLinkRow[]> {
+  if (isPgConn(db)) {
+    return pgQuery<TrackingLinkRow>(
+      db,
+      `SELECT * FROM tracking_links WHERE company_id = $1 ORDER BY created_at DESC`,
+      [companyId],
+    );
   }
-): TrackingLinkRow {
-  const id = crypto.randomUUID();
-  db.prepare(
-    `INSERT INTO tracking_links
-      (id, company_id, name, slug, destination_type, ios_url, android_url, web_url, default_params_json)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(
-    id,
-    input.companyId,
-    input.name,
-    input.slug,
-    input.destinationType,
-    input.iosUrl ?? null,
-    input.androidUrl ?? null,
-    input.webUrl ?? null,
-    input.defaultParams ? JSON.stringify(input.defaultParams) : null
-  );
-  return db.prepare(`SELECT * FROM tracking_links WHERE id = ?`).get(id) as TrackingLinkRow;
+  return db.prepare(`SELECT * FROM tracking_links WHERE company_id = ? ORDER BY created_at DESC`).all(companyId) as TrackingLinkRow[];
 }
 
-export function deleteTrackingLink(db: Database, companyId: string, linkId: string): boolean {
-  const res = db.prepare(`DELETE FROM tracking_links WHERE id = ? AND company_id = ?`).run(linkId, companyId);
-  return res.changes > 0;
-}
-
-/** Parse AppsFlyer-compatible and st_* query params into normalized campaign fields. */
 export function parseCampaignParams(query: URLSearchParams): CampaignParams {
   const mediaSource =
     query.get("pid") ?? query.get("media_source") ?? query.get("st_media_source") ?? undefined;
@@ -119,19 +104,15 @@ const DEFAULT_SETTINGS: AttributionSettings = {
   androidSha256Certs: [],
   associatedDomain: null,
   skanIds: [],
-  partnerPostbackUrl: null
+  partnerPostbackUrl: null,
 };
 
-export function getAttributionSettings(db: Database, companyId: string): AttributionSettings {
-  const row = db
-    .prepare(`SELECT * FROM project_attribution_settings WHERE company_id = ?`)
-    .get(companyId) as Record<string, unknown> | undefined;
-  if (!row) return { ...DEFAULT_SETTINGS };
+function rowToSettings(row: Record<string, unknown>): AttributionSettings {
   return {
     installAttributionWindowHours: (row.install_attribution_window_hours as number) ?? 24,
     conversionAttributionWindowHours: (row.conversion_attribution_window_hours as number) ?? 168,
     reengagementWindowHours: (row.reengagement_window_hours as number) ?? 168,
-    enableProbabilisticMatching: Boolean(row.enable_probabilistic_matching ?? 1),
+    enableProbabilisticMatching: Boolean(row.enable_probabilistic_matching ?? true),
     probabilisticMinConfidence: (row.probabilistic_min_confidence as number) ?? 0.7,
     iosAppId: (row.ios_app_id as string) ?? null,
     androidPackage: (row.android_package as string) ?? null,
@@ -141,17 +122,78 @@ export function getAttributionSettings(db: Database, companyId: string): Attribu
       : [],
     associatedDomain: (row.associated_domain as string) ?? null,
     skanIds: row.skan_ids_json ? (JSON.parse(row.skan_ids_json as string) as string[]) : [],
-    partnerPostbackUrl: (row.partner_postback_url as string) ?? null
+    partnerPostbackUrl: (row.partner_postback_url as string) ?? null,
   };
 }
 
-export function upsertAttributionSettings(
-  db: Database,
+export async function getAttributionSettings(
+  db: Database | pg.Pool,
   companyId: string,
-  settings: Partial<AttributionSettings>
-): void {
-  const current = getAttributionSettings(db, companyId);
+): Promise<AttributionSettings> {
+  let row: Record<string, unknown> | undefined;
+  if (isPgConn(db)) {
+    row = await pgQueryOne<Record<string, unknown>>(
+      db,
+      `SELECT * FROM project_attribution_settings WHERE company_id = $1`,
+      [companyId],
+    );
+  } else {
+    row = db.prepare(`SELECT * FROM project_attribution_settings WHERE company_id = ?`).get(companyId) as
+      | Record<string, unknown>
+      | undefined;
+  }
+  if (!row) return { ...DEFAULT_SETTINGS };
+  return rowToSettings(row);
+}
+
+export async function upsertAttributionSettings(
+  db: Database | pg.Pool,
+  companyId: string,
+  settings: Partial<AttributionSettings>,
+): Promise<void> {
+  const current = await getAttributionSettings(db, companyId);
   const merged = { ...current, ...settings };
+  if (isPgConn(db)) {
+    await pgExecute(
+      db,
+      `INSERT INTO project_attribution_settings
+        (company_id, install_attribution_window_hours, conversion_attribution_window_hours,
+         reengagement_window_hours, enable_probabilistic_matching, probabilistic_min_confidence,
+         ios_app_id, android_package, ios_team_id, android_sha256_certs_json, associated_domain,
+         skan_ids_json, partner_postback_url, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+       ON CONFLICT (company_id) DO UPDATE SET
+         install_attribution_window_hours = EXCLUDED.install_attribution_window_hours,
+         conversion_attribution_window_hours = EXCLUDED.conversion_attribution_window_hours,
+         reengagement_window_hours = EXCLUDED.reengagement_window_hours,
+         enable_probabilistic_matching = EXCLUDED.enable_probabilistic_matching,
+         probabilistic_min_confidence = EXCLUDED.probabilistic_min_confidence,
+         ios_app_id = EXCLUDED.ios_app_id,
+         android_package = EXCLUDED.android_package,
+         ios_team_id = EXCLUDED.ios_team_id,
+         android_sha256_certs_json = EXCLUDED.android_sha256_certs_json,
+         associated_domain = EXCLUDED.associated_domain,
+         skan_ids_json = EXCLUDED.skan_ids_json,
+         partner_postback_url = EXCLUDED.partner_postback_url,
+         updated_at = NOW()`,
+      [
+        companyId,
+        merged.installAttributionWindowHours,
+        merged.conversionAttributionWindowHours,
+        merged.reengagementWindowHours,
+        merged.enableProbabilisticMatching,
+        merged.probabilisticMinConfidence,
+        merged.iosAppId,
+        merged.androidPackage,
+        merged.iosTeamId,
+        JSON.stringify(merged.androidSha256Certs),
+        merged.associatedDomain,
+        JSON.stringify(merged.skanIds),
+        merged.partnerPostbackUrl,
+      ],
+    );
+    return;
+  }
   db.prepare(
     `INSERT INTO project_attribution_settings
       (company_id, install_attribution_window_hours, conversion_attribution_window_hours,
@@ -172,7 +214,7 @@ export function upsertAttributionSettings(
        associated_domain = excluded.associated_domain,
        skan_ids_json = excluded.skan_ids_json,
        partner_postback_url = excluded.partner_postback_url,
-       updated_at = datetime('now')`
+       updated_at = datetime('now')`,
   ).run(
     companyId,
     merged.installAttributionWindowHours,
@@ -186,6 +228,72 @@ export function upsertAttributionSettings(
     JSON.stringify(merged.androidSha256Certs),
     merged.associatedDomain,
     JSON.stringify(merged.skanIds),
-    merged.partnerPostbackUrl
+    merged.partnerPostbackUrl,
   );
+}
+
+// Kept for dashboard API migration
+export async function createTrackingLink(
+  db: Database | pg.Pool,
+  input: {
+    companyId: string;
+    name: string;
+    slug: string;
+    destinationType: string;
+    iosUrl?: string;
+    androidUrl?: string;
+    webUrl?: string;
+    defaultParams?: Record<string, unknown>;
+  },
+): Promise<TrackingLinkRow> {
+  const id = crypto.randomUUID();
+  if (isPgConn(db)) {
+    await pgExecute(
+      db,
+      `INSERT INTO tracking_links
+        (id, company_id, name, slug, destination_type, ios_url, android_url, web_url, default_params_json)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        id,
+        input.companyId,
+        input.name,
+        input.slug,
+        input.destinationType,
+        input.iosUrl ?? null,
+        input.androidUrl ?? null,
+        input.webUrl ?? null,
+        input.defaultParams ? JSON.stringify(input.defaultParams) : null,
+      ],
+    );
+    return (await pgQueryOne<TrackingLinkRow>(db, `SELECT * FROM tracking_links WHERE id = $1`, [id]))!;
+  }
+  db.prepare(
+    `INSERT INTO tracking_links
+      (id, company_id, name, slug, destination_type, ios_url, android_url, web_url, default_params_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    id,
+    input.companyId,
+    input.name,
+    input.slug,
+    input.destinationType,
+    input.iosUrl ?? null,
+    input.androidUrl ?? null,
+    input.webUrl ?? null,
+    input.defaultParams ? JSON.stringify(input.defaultParams) : null,
+  );
+  return db.prepare(`SELECT * FROM tracking_links WHERE id = ?`).get(id) as TrackingLinkRow;
+}
+
+export async function deleteTrackingLink(
+  db: Database | pg.Pool,
+  companyId: string,
+  linkId: string,
+): Promise<boolean> {
+  if (isPgConn(db)) {
+    const res = await db.query(`DELETE FROM tracking_links WHERE id = $1 AND company_id = $2`, [linkId, companyId]);
+    return (res.rowCount ?? 0) > 0;
+  }
+  const res = db.prepare(`DELETE FROM tracking_links WHERE id = ? AND company_id = ?`).run(linkId, companyId);
+  return res.changes > 0;
 }

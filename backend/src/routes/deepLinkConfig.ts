@@ -1,14 +1,15 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Database } from "better-sqlite3";
+import type pg from "pg";
 import { getAttributionSettings } from "../services/trackingLinks.js";
 
-export function handleAppleAppSiteAssociation(
+export async function handleAppleAppSiteAssociation(
   req: IncomingMessage,
   res: ServerResponse,
-  customerDb: Database,
-  companyId: string
-): void {
-  const settings = getAttributionSettings(customerDb, companyId);
+  customerDb: Database | pg.Pool,
+  companyId: string,
+): Promise<void> {
+  const settings = await getAttributionSettings(customerDb, companyId);
   if (!settings.iosAppId || !settings.iosTeamId) {
     res.statusCode = 404;
     res.end("Not configured");
@@ -20,23 +21,23 @@ export function handleAppleAppSiteAssociation(
       details: [
         {
           appID: `${settings.iosTeamId}.${settings.iosAppId}`,
-          paths: ["/v1/l/*", "/l/*"]
-        }
-      ]
-    }
+          paths: ["/v1/l/*", "/l/*"],
+        },
+      ],
+    },
   };
   res.statusCode = 200;
   res.setHeader("Content-Type", "application/json");
   res.end(JSON.stringify(body));
 }
 
-export function handleAssetLinks(
+export async function handleAssetLinks(
   req: IncomingMessage,
   res: ServerResponse,
-  customerDb: Database,
-  companyId: string
-): void {
-  const settings = getAttributionSettings(customerDb, companyId);
+  customerDb: Database | pg.Pool,
+  companyId: string,
+): Promise<void> {
+  const settings = await getAttributionSettings(customerDb, companyId);
   if (!settings.androidPackage || settings.androidSha256Certs.length === 0) {
     res.statusCode = 404;
     res.end("Not configured");
@@ -48,9 +49,9 @@ export function handleAssetLinks(
       target: {
         namespace: "android_app",
         package_name: settings.androidPackage,
-        sha256_cert_fingerprints: settings.androidSha256Certs
-      }
-    }
+        sha256_cert_fingerprints: settings.androidSha256Certs,
+      },
+    },
   ];
   res.statusCode = 200;
   res.setHeader("Content-Type", "application/json");

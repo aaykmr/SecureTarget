@@ -1,8 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { Database } from "better-sqlite3";
 import { createClientSession } from "../services/clientSession.js";
 import { persistBootstrapSnapshot } from "../services/deviceIdentity.js";
-import { resolveCompanyIdFromApiKey } from "../services/apiKeyAuth.js";
+import { resolveCompanyIdFromApiKeyAsync } from "../services/apiKeyAuth.js";
+import type { IngestDb } from "../db/ingestDb.js";
 
 async function readJson(req: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = [];
@@ -68,16 +68,22 @@ function clientIp(req: IncomingMessage): string | null {
 export async function handleSessionBootstrap(
   req: IncomingMessage,
   res: ServerResponse,
-  db: Database,
-  deviceDb: Database
+  ingestDb: IngestDb,
 ): Promise<void> {
+  const customer = ingestDb.customer();
+  const device = ingestDb.device();
+  const pgPool = ingestDb.pool();
+
   const apiKey = getApiKeyHeader(req);
   if (!apiKey) {
     sendJson(res, 401, { error: "Missing x-api-key" });
     return;
   }
 
-  const companyId = resolveCompanyIdFromApiKey(db, apiKey);
+  const companyId = await resolveCompanyIdFromApiKeyAsync(
+    ingestDb.mode === "sqlite" ? { sqlite: ingestDb.customerSqlite() } : { pg: pgPool },
+    apiKey,
+  );
   if (!companyId) {
     sendJson(res, 401, { error: "Invalid or revoked API key" });
     return;
@@ -88,22 +94,22 @@ export async function handleSessionBootstrap(
     if (!isDevicePayload(raw)) {
       sendJson(res, 400, {
         error:
-          "Invalid body: require occurredAt (ISO), device.platform (web|ios|android). Optional: advertisingId, vendorId, installReferrer, deepLinkUrl, utm."
+          "Invalid body: require occurredAt (ISO), device.platform (web|ios|android). Optional: advertisingId, vendorId, installReferrer, deepLinkUrl, utm.",
       });
       return;
     }
-    const sessionId = createClientSession(db, companyId);
-    const device = raw.device as import("../../../packages/contracts/src/device.js").DeviceDetails;
-    persistBootstrapSnapshot(deviceDb, {
+    const sessionId = await createClientSession(customer, companyId);
+    const devicePayload = raw.device as import("../../../packages/contracts/src/device.js").DeviceDetails;
+    await persistBootstrapSnapshot(device, {
       companyId,
       sessionId,
-      device,
+      device: devicePayload,
       occurredAt: raw.occurredAt,
       ip: clientIp(req),
-      userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null
+      userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null,
     });
     sendJson(res, 201, { sessionId });
   } catch (e) {
-    sendJson(res, 400, { error: e instanceof Error ? e.message : "Invalid JSON" });
+    sendJson(res, 400, { error: e instanceof Error ? e.message : "Invalid request" });
   }
 }

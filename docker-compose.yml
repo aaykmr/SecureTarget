@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: securetarget-postgres
+    environment:
+      POSTGRES_USER: securetarget
+      POSTGRES_PASSWORD: securetarget
+      POSTGRES_DB: securetarget
+    ports:
+      - "5433:5432"
+    volumes:
+      - securetarget_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U securetarget -d securetarget"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    container_name: securetarget-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - securetarget_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 3s
+
+volumes:
+  securetarget_pgdata:
+  securetarget_redisdata:

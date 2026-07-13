@@ -13,36 +13,36 @@ test("extractClickIdFromReferrer parses Play referrer", () => {
   assert.equal(extractClickIdFromReferrer(ref), "550e8400-e29b-41d4-a716-446655440000");
 });
 
-test("install attribution matches click_id from pending click", () => {
+test("install attribution matches click_id from pending click", async () => {
   const customerDb = createDb(":memory:");
   const deviceDb = createDeviceDb(":memory:");
   const companyId = "cmp-test-1";
   const sessionId = "sess_test_1";
   const clickId = "550e8400-e29b-41d4-a716-446655440000";
 
-  createTrackingLink(customerDb, {
+  await createTrackingLink(customerDb, {
     companyId,
     name: "Test",
     slug: "test",
     destinationType: "web",
-    webUrl: "https://example.com"
+    webUrl: "https://example.com",
   });
 
-  insertPendingClick(deviceDb, {
+  await insertPendingClick(deviceDb, {
     companyId,
     params: { mediaSource: "facebook", campaignId: "summer", clickId },
     expiresAt: new Date(Date.now() + 86400000).toISOString(),
     ip: "203.0.113.1",
-    userAgent: "TestAgent/1.0"
+    userAgent: "TestAgent/1.0",
   });
 
-  persistBootstrapSnapshot(deviceDb, {
+  await persistBootstrapSnapshot(deviceDb, {
     companyId,
     sessionId,
     device: { platform: "android", advertisingId: "gaid-test" },
     occurredAt: new Date().toISOString(),
     ip: "203.0.113.1",
-    userAgent: "TestAgent/1.0"
+    userAgent: "TestAgent/1.0",
   });
 
   const installEvent: InstallEvent = {
@@ -51,10 +51,10 @@ test("install attribution matches click_id from pending click", () => {
     companyId,
     occurredAt: new Date().toISOString(),
     token: sessionId,
-    clickId
+    clickId,
   };
 
-  const result = resolveInstallAttribution(customerDb, deviceDb, installEvent, sessionId);
+  const result = await resolveInstallAttribution(customerDb, deviceDb, installEvent, sessionId);
   assert.equal(result.attributed, true);
   assert.equal(result.isOrganic, false);
   assert.equal(result.mediaSource, "facebook");
@@ -67,17 +67,17 @@ test("install attribution matches click_id from pending click", () => {
   assert.equal(attrRow.c, 1);
 });
 
-test("install attribution returns organic when no match", () => {
+test("install attribution returns organic when no match", async () => {
   const customerDb = createDb(":memory:");
   const deviceDb = createDeviceDb(":memory:");
   const companyId = "cmp-test-2";
   const sessionId = "sess_test_2";
 
-  persistBootstrapSnapshot(deviceDb, {
+  await persistBootstrapSnapshot(deviceDb, {
     companyId,
     sessionId,
     device: { platform: "web" },
-    occurredAt: new Date().toISOString()
+    occurredAt: new Date().toISOString(),
   });
 
   const installEvent: InstallEvent = {
@@ -85,10 +85,10 @@ test("install attribution returns organic when no match", () => {
     eventId: "evt-install-2",
     companyId,
     occurredAt: new Date().toISOString(),
-    token: sessionId
+    token: sessionId,
   };
 
-  const result = resolveInstallAttribution(customerDb, deviceDb, installEvent, sessionId);
+  const result = await resolveInstallAttribution(customerDb, deviceDb, installEvent, sessionId);
   assert.equal(result.attributed, false);
   assert.equal(result.isOrganic, true);
 });

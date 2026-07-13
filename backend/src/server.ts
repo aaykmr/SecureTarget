@@ -1,31 +1,22 @@
 import { createServer, type ServerResponse } from "node:http";
 import { config as loadEnv } from "dotenv";
-import { dirname, isAbsolute, resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createDb } from "./db/client.js";
-import { createDeviceDb } from "./db/deviceClient.js";
+import { IngestDb } from "./db/ingestDb.js";
 import { handleIngest } from "./routes/ingest.js";
 import { handleSessionBootstrap } from "./routes/sessionBootstrap.js";
 import { handleClickRedirect } from "./routes/clickRedirect.js";
 import { handleSkanPostback, handleCostIngest } from "./routes/skanPostback.js";
 import { handleAppleAppSiteAssociation, handleAssetLinks } from "./routes/deepLinkConfig.js";
+import { handleDashboardApi, isDashboardPath } from "./dashboard/router.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const envPath = process.env.SECURETARGET_ENV_PATH ?? resolve(__dirname, "../../.env");
 loadEnv({ path: envPath });
 
-const repoRoot = resolve(__dirname, "../..");
-function resolveDbPath(configured: string): string {
-  if (configured === ":memory:") return configured;
-  if (isAbsolute(configured)) return configured;
-  return resolve(repoRoot, configured);
-}
-
-const dbPath = resolveDbPath(process.env.SECURETARGET_DB_PATH ?? "securetarget.sqlite");
-const deviceDbPath = resolveDbPath(process.env.SECURETARGET_DEVICE_DB_PATH ?? "securetarget-device.sqlite");
-const db = createDb(dbPath);
-const deviceDb = createDeviceDb(deviceDbPath);
+const ingestDb = await IngestDb.open();
+const pgPool = ingestDb.pool();
 const port = Number(process.env.PORT ?? 8080);
 
 const ingestPaths = ["/v1/record"];
@@ -85,41 +76,41 @@ const server = createServer(async (req, res) => {
 
   const clickSlug = req.method === "GET" ? parseClickSlug(req.url) : null;
   if (clickSlug) {
-    await handleClickRedirect(req, res, db, deviceDb, clickSlug);
+    await handleClickRedirect(req, res, ingestDb.customer(), ingestDb.device(), clickSlug);
     return;
   }
 
   const wellKnown = req.method === "GET" ? parseWellKnownCompany(req.url) : null;
   if (wellKnown?.type === "aasa") {
-    handleAppleAppSiteAssociation(req, res, db, wellKnown.companyId);
+    await handleAppleAppSiteAssociation(req, res, ingestDb.customer(), wellKnown.companyId);
     return;
   }
   if (wellKnown?.type === "assetlinks") {
-    handleAssetLinks(req, res, db, wellKnown.companyId);
+    await handleAssetLinks(req, res, ingestDb.customer(), wellKnown.companyId);
     return;
   }
 
   if (req.method === "POST" && req.url && requestPath(req.url) === bootstrapPath) {
     applyIngestCors(res);
-    await handleSessionBootstrap(req, res, db, deviceDb);
+    await handleSessionBootstrap(req, res, ingestDb);
     return;
   }
 
   if (req.method === "POST" && req.url && ingestPaths.includes(requestPath(req.url))) {
     applyIngestCors(res);
-    await handleIngest(req, res, db, deviceDb);
+    await handleIngest(req, res, ingestDb);
     return;
   }
 
   if (req.method === "POST" && req.url && requestPath(req.url) === "/v1/skan/postback") {
     applyIngestCors(res);
-    await handleSkanPostback(req, res, deviceDb, db);
+    await handleSkanPostback(req, res, ingestDb);
     return;
   }
 
   if (req.method === "POST" && req.url && requestPath(req.url) === "/v1/costs") {
     applyIngestCors(res);
-    await handleCostIngest(req, res, deviceDb, db);
+    await handleCostIngest(req, res, ingestDb);
     return;
   }
 
@@ -129,11 +120,19 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  const path = requestPath(req.url);
+  if (pgPool && isDashboardPath(path)) {
+    await handleDashboardApi(req, res, pgPool, path);
+    return;
+  }
+
   res.statusCode = 404;
   res.end("Not found");
 });
 
 server.listen(port, () => {
   // eslint-disable-next-line no-console
-  console.log(`SecureTarget backend listening on :${port} (db: ${dbPath}, deviceDb: ${deviceDbPath})`);
+  console.log(
+    `SecureTarget backend listening on :${port} (data: ${ingestDb.mode === "postgres" ? "postgres" : "sqlite"})`,
+  );
 });

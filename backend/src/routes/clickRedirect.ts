@@ -1,11 +1,13 @@
 import crypto from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Database } from "better-sqlite3";
+import type pg from "pg";
 import {
   getTrackingLinkBySlugGlobal,
   parseCampaignParams,
-  type CampaignParams
+  type CampaignParams,
 } from "../services/trackingLinks.js";
+import { isPgConn, pgExecute } from "../db/ingestDb.js";
 
 export interface PendingClickRow {
   click_id: string;
@@ -45,8 +47,8 @@ function detectPlatformHint(userAgent: string | null): string | null {
   return "web";
 }
 
-export function insertPendingClick(
-  deviceDb: Database,
+export async function insertPendingClick(
+  deviceDb: Database | pg.Pool,
   input: {
     companyId: string;
     linkId?: string | null;
@@ -56,9 +58,36 @@ export function insertPendingClick(
     expiresAt: string;
     metadata?: Record<string, unknown>;
   }
-): string {
+): Promise<string> {
   const clickId = input.params.clickId ?? crypto.randomUUID();
   const now = new Date().toISOString();
+  if (isPgConn(deviceDb)) {
+    await pgExecute(
+      deviceDb,
+      `INSERT INTO pending_clicks
+        (click_id, company_id, link_id, media_source, campaign_id, adgroup_id, creative_id,
+         channel, deep_link_value, ip, user_agent, platform_hint, clicked_at, expires_at, metadata_json)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+      [
+        clickId,
+        input.companyId,
+        input.linkId ?? null,
+        input.params.mediaSource ?? null,
+        input.params.campaignId ?? null,
+        input.params.adgroupId ?? null,
+        input.params.creativeId ?? null,
+        input.params.channel ?? null,
+        input.params.deepLinkValue ?? null,
+        input.ip ?? null,
+        input.userAgent ?? null,
+        detectPlatformHint(input.userAgent ?? null),
+        now,
+        input.expiresAt,
+        input.metadata ? JSON.stringify(input.metadata) : null,
+      ],
+    );
+    return clickId;
+  }
   deviceDb
     .prepare(
       `INSERT INTO pending_clicks
@@ -92,11 +121,19 @@ export function getPendingClickById(deviceDb: Database, clickId: string): Pendin
     | undefined;
 }
 
-export function markPendingClickMatched(
-  deviceDb: Database,
+export async function markPendingClickMatched(
+  deviceDb: Database | pg.Pool,
   clickId: string,
-  identityId: string
-): void {
+  identityId: string,
+): Promise<void> {
+  if (isPgConn(deviceDb)) {
+    await pgExecute(
+      deviceDb,
+      `UPDATE pending_clicks SET matched_identity_id = $1, matched_at = NOW() WHERE click_id = $2`,
+      [identityId, clickId],
+    );
+    return;
+  }
   deviceDb
     .prepare(
       `UPDATE pending_clicks SET matched_identity_id = ?, matched_at = datetime('now') WHERE click_id = ?`
@@ -129,11 +166,11 @@ function buildPlayStoreUrl(androidUrl: string, referrer: string): string {
 export async function handleClickRedirect(
   req: IncomingMessage,
   res: ServerResponse,
-  customerDb: Database,
-  deviceDb: Database,
-  slug: string
+  customerDb: Database | pg.Pool,
+  deviceDb: Database | pg.Pool,
+  slug: string,
 ): Promise<void> {
-  const link = getTrackingLinkBySlugGlobal(customerDb, slug);
+  const link = await getTrackingLinkBySlugGlobal(customerDb, slug);
   if (!link) {
     res.statusCode = 404;
     res.end("Link not found");
@@ -159,7 +196,7 @@ export async function handleClickRedirect(
   const expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
   const ip = clientIp(req);
   const userAgent = typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null;
-  const clickId = insertPendingClick(deviceDb, {
+  const clickId = await insertPendingClick(deviceDb, {
     companyId: link.company_id,
     linkId: link.id,
     params,
