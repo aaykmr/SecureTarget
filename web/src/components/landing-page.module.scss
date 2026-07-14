@@ -13,7 +13,7 @@
   --lp-brand-glow: color-mix(in srgb, #1877f2 28%, transparent);
 
   /* Fluid typography — large on desktop, scales down on smaller screens */
-  --lp-hero: clamp(2.5rem, 7.5vw + 0.5rem, 5.5rem);
+  --lp-hero: clamp(2.25rem, 7.5vw + 0.5rem, 5.5rem);
   --lp-section: clamp(2rem, 4.5vw + 0.5rem, 3.75rem);
   --lp-feature: clamp(1.75rem, 3.5vw + 0.25rem, 3rem);
   --lp-body-lg: clamp(1.125rem, 1.5vw + 0.5rem, 1.625rem);
@@ -250,7 +250,20 @@
   animation: fadeUp 0.7s ease 0.1s both;
 
   @media (max-width: 900px) {
-    order: 1;
+    order: 0;
+  }
+}
+
+.brandMark {
+  margin: 0 0 var(--space-5);
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--lp-brand);
+  line-height: 1.1;
+
+  @media (max-width: 900px) {
+    text-align: center;
   }
 }
 
@@ -360,15 +373,16 @@
   animation: scaleIn 0.8s ease 0.25s both;
 
   @media (max-width: 900px) {
-    order: 0;
-    max-width: min(22rem, 90vw);
-    margin: 0 auto;
+    order: 1;
+    width: 100%;
+    max-width: none;
+    margin: 0;
   }
 }
 
 .flowCard {
   width: 100%;
-  max-width: min(22rem, 90vw);
+  max-width: min(24rem, 100%);
   border-radius: var(--radius-lg);
   border: 1px solid var(--lp-border);
   background: var(--lp-surface);
@@ -376,21 +390,45 @@
   box-shadow:
     0 1px 2px rgba(15, 23, 42, 0.04),
     0 12px 40px rgba(15, 23, 42, 0.08);
+
+  @media (max-width: 900px) {
+    max-width: none;
+    padding: var(--space-7) var(--space-8);
+  }
 }
 
 .flowRow {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
+  display: flex;
+  align-items: flex-start;
   gap: var(--space-5);
+}
+
+.flowRowHighlight {
+  padding: var(--space-5);
+  margin: 0 calc(var(--space-5) * -1);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--lp-brand-soft) 70%, transparent);
+}
+
+.flowText {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
 }
 
 .flowIcon {
   color: var(--lp-muted);
+  flex-shrink: 0;
+  margin-top: 0.15rem;
 }
 
 .flowIconActive {
   color: var(--lp-brand);
+  flex-shrink: 0;
+  margin-top: 0.15rem;
 }
 
 .flowDot,
@@ -400,29 +438,35 @@
 
 .flowLabel {
   font-size: var(--lp-body);
-  font-weight: 500;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 .flowMeta {
   font-size: var(--lp-caption);
   color: var(--lp-subtle);
   font-family: var(--font-mono), ui-monospace, monospace;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 .flowBadge {
+  display: inline-flex;
+  align-items: center;
   border-radius: var(--radius-pill);
   background: var(--lp-brand-soft);
-  padding: 2px var(--space-4);
+  padding: 4px var(--space-5);
   font-size: var(--lp-caption);
   font-weight: 600;
   color: var(--lp-brand);
+  margin-top: var(--space-2);
 }
 
 .flowConnector {
   width: 1px;
-  height: 1.5rem;
-  margin-left: 0.2rem;
-  background: linear-gradient(to bottom, var(--lp-border), var(--lp-brand));
+  height: 1.25rem;
+  margin: var(--space-3) 0 var(--space-3) 0.55rem;
+  background: linear-gradient(to bottom, var(--lp-brand), var(--lp-border));
   animation: pulseLine 2.4s ease-in-out infinite;
 }
 
@@ -447,10 +491,72 @@
   opacity: 0.7;
 }
 
-/* —— Intro fold —— */
+.channelStrip {
+  list-style: none;
+  margin: clamp(var(--space-7), 4vh, var(--space-10)) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  animation: fadeUp 0.7s ease 0.35s both;
+
+  @media (min-width: 901px) {
+    justify-content: flex-start;
+  }
+}
+
+.channelItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--lp-border);
+  background: var(--lp-surface);
+  font-size: var(--lp-caption);
+  font-weight: 600;
+  color: var(--lp-text);
+}
+
+.channelItemMuted {
+  color: var(--lp-subtle);
+  border-style: dashed;
+  background: transparent;
+}
+
+.channelIcon {
+  color: var(--lp-brand);
+  flex-shrink: 0;
+}
+
+/* —— Intro / statement fold —— */
 
 .introFold {
   background: linear-gradient(180deg, var(--lp-bg) 0%, color-mix(in srgb, var(--lp-brand) 6%, var(--lp-bg)) 100%);
+}
+
+.statementBlock {
+  max-width: 48rem;
+  margin: 0 auto;
+  text-align: center;
+  animation: fadeUp 0.7s ease both;
+}
+
+.statementTitle {
+  margin: 0;
+  font-size: var(--lp-section);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.statementLead {
+  margin: clamp(var(--space-6), 3vh, var(--space-8)) 0 0;
+  font-size: var(--lp-body-lg);
+  line-height: 1.6;
+  color: var(--lp-muted);
 }
 
 .introGrid {
@@ -906,5 +1012,40 @@
 
   .fold {
     min-height: 100svh;
+  }
+
+  .heroFold {
+    min-height: auto;
+  }
+
+  .heroFold .foldInner {
+    justify-content: flex-start;
+    padding-top: var(--space-7);
+    padding-bottom: var(--space-9);
+    gap: var(--space-7);
+  }
+
+  .heroGrid {
+    gap: var(--space-7);
+  }
+
+  .heroTitle {
+    font-size: clamp(2rem, 9vw, 2.75rem);
+  }
+
+  .brandMark {
+    text-align: center;
+  }
+
+  .heroLead {
+    font-size: 1.0625rem;
+  }
+
+  .flowCard {
+    text-align: left;
+  }
+
+  .channelStrip {
+    justify-content: center;
   }
 }

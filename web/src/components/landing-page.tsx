@@ -2,88 +2,82 @@ import { Link } from "react-router-dom";
 import {
   Analytics01Icon,
   ArrowDown01Icon,
+  ComputerIcon,
+  GameController01Icon,
   InstallingUpdates01Icon,
   Link01Icon,
   Megaphone01Icon,
-  MobileProgramming01Icon,
   Rocket01Icon,
   Shield01Icon,
+  SmartPhone01Icon,
+  Tv01Icon,
+  WebDesign01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeIcon } from "@/components/huge-icon";
 import styles from "./landing-page.module.scss";
 
-const INTRO_PHOTOS = [
-  {
-    src: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=900&q=80",
-    alt: "Growth team reviewing campaign performance together",
-    className: styles.introPhotoMain,
-  },
-  {
-    src: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80",
-    alt: "Analytics dashboard with install and conversion charts",
-    className: styles.introPhotoSecondary,
-  },
-  {
-    src: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&w=600&q=80",
-    alt: "Mobile apps on a desk showing install attribution flow",
-    className: styles.introPhotoTertiary,
-  },
+const CHANNELS = [
+  { label: "Apps", icon: SmartPhone01Icon },
+  { label: "Web", icon: WebDesign01Icon },
+  { label: "CTV", icon: Tv01Icon },
+  { label: "PC", icon: ComputerIcon },
+  { label: "Console", icon: GameController01Icon },
 ] as const;
 
 const FEATURES = [
   {
-    title: "Install attribution",
+    title: "Mobile-grade measurement",
     description:
-      "Know which campaign drove each install. Match clicks to first opens with tracking links, deep links, and Play Install Referrer.",
+      "Attribute installs and conversions with the same rigor on apps and web — campaign links, deep links, and install referrer built in.",
     icon: InstallingUpdates01Icon,
     image:
       "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&w=1200&q=80",
-    imageAlt: "Person holding a phone after installing an app from a campaign",
+    imageAlt: "Person using a phone after converting from a digital campaign",
   },
   {
-    title: "Campaign links",
+    title: "Every digital touchpoint",
     description:
-      "OneLink-style URLs record touchpoints before redirecting to App Store, Play Store, or your web landing page.",
+      "Unify signals across apps, web, CTV, PC, console, and beyond — so every click, impression, and open lands in one measurement layer.",
     icon: Link01Icon,
     image:
       "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80",
-    imageAlt: "Marketing team reviewing campaign performance on a laptop",
+    imageAlt: "Team reviewing omnichannel campaign performance on a laptop",
   },
   {
-    title: "Privacy by design",
+    title: "AI-ready infrastructure",
     description:
-      "Customer data stays hashed and opaque. Device matching runs in a separate store you control — not sold to third parties.",
+      "Clean, structured event data you control — hashed where it should be, ready for models, pipelines, and decisions that compound growth.",
     icon: Shield01Icon,
     image:
-      "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=1200&q=80",
-    imageAlt: "Secure data protection concept with lock and shield imagery",
+      "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80",
+    imageAlt: "Analytics workspace with charts and structured measurement data",
   },
 ] as const;
 
 const STEPS = [
   {
     n: "01",
-    title: "Create a project",
-    text: "Generate an API key and drop in the Web, iOS, or Android SDK.",
+    title: "Connect EventIQN",
+    text: "Create a project, issue an API key, and ship the Web, iOS, or Android SDK.",
     image:
       "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=800&q=80",
-    imageAlt: "Developer integrating an SDK into application code",
+    imageAlt: "Developer integrating EventIQN SDK into application code",
   },
   {
     n: "02",
-    title: "Share campaign links",
-    text: "Use /v1/l/{slug} URLs in ads, email, and social — clicks are recorded server-side.",
+    title: "Capture every signal",
+    text: "Run campaign links and ingest events across apps, web, and expanding touchpoints.",
     image:
       "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=800&q=80",
-    imageAlt: "Team collaborating on multi-channel campaign launches",
+    imageAlt: "Team launching campaigns across multiple digital channels",
   },
   {
     n: "03",
-    title: "Measure installs",
-    text: "First open fires an install event; attribution resolves to media source and campaign.",
+    title: "Decide and grow",
+    text: "See attribution, organic vs paid, and funnel outcomes — fuel for smarter, faster growth.",
     image:
       "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80",
-    imageAlt: "Dashboard showing attributed installs and campaign breakdown",
+    imageAlt: "Dashboard showing attributed growth across digital channels",
   },
 ] as const;
 
@@ -100,8 +94,8 @@ export function LandingPage() {
             EventIQN
           </Link>
           <nav className={styles.headerNav}>
-            <a href="#features" className={styles.headerLink}>
-              Features
+            <a href="#signals" className={styles.headerLink}>
+              Signals
             </a>
             <a href="#how-it-works" className={styles.headerLink}>
               How it works
@@ -121,16 +115,13 @@ export function LandingPage() {
           <div className={styles.foldInner}>
             <div className={styles.heroGrid}>
               <div className={styles.heroCopy}>
-                <p className={styles.eyebrow}>
-                  <HugeIcon icon={MobileProgramming01Icon} size={16} className={styles.eyebrowIcon} />
-                  Privacy-first mobile measurement
-                </p>
+                <p className={styles.brandMark}>EventIQN</p>
                 <h1 className={styles.heroTitle}>
-                  Know where every install <span className={styles.heroAccent}>comes from</span>
+                  Deliver the right <span className={styles.heroAccent}>signals</span>
                 </h1>
                 <p className={styles.heroLead}>
-                  EventIQN is your own attribution layer — campaign links, install matching, and a dashboard
-                  for organic vs paid — without handing user data to an external MMP.
+                  AI-ready infrastructure and mobile-grade measurement across every digital touchpoint—from apps
+                  and web to CTV, PC, console, and beyond.
                 </p>
                 <div className={styles.heroActions}>
                   <Link to="/register" className={styles.btnPrimary}>
@@ -145,54 +136,60 @@ export function LandingPage() {
 
               <div className={styles.heroVisual} aria-hidden>
                 <div className={styles.flowCard}>
-                  <div className={styles.flowRow}>
-                    <HugeIcon icon={Megaphone01Icon} size={18} className={styles.flowIcon} />
-                    <span className={styles.flowLabel}>Ad click</span>
-                    <span className={styles.flowMeta}>meta · summer_sale</span>
+                  <div className={`${styles.flowRow} ${styles.flowRowHighlight}`}>
+                    <HugeIcon icon={Analytics01Icon} size={18} className={styles.flowIconActive} />
+                    <div className={styles.flowText}>
+                      <span className={styles.flowLabel}>Attributed</span>
+                      <span className={styles.flowBadge}>98% confidence</span>
+                    </div>
                   </div>
                   <div className={styles.flowConnector} />
                   <div className={styles.flowRow}>
                     <HugeIcon icon={InstallingUpdates01Icon} size={18} className={styles.flowIcon} />
-                    <span className={styles.flowLabel}>App install</span>
-                    <span className={styles.flowMeta}>first open</span>
+                    <div className={styles.flowText}>
+                      <span className={styles.flowLabel}>App install</span>
+                      <span className={styles.flowMeta}>first open</span>
+                    </div>
                   </div>
                   <div className={styles.flowConnector} />
-                  <div className={`${styles.flowRow} ${styles.flowRowHighlight}`}>
-                    <HugeIcon icon={Analytics01Icon} size={18} className={styles.flowIconActive} />
-                    <span className={styles.flowLabel}>Attributed</span>
-                    <span className={styles.flowBadge}>98% confidence</span>
+                  <div className={styles.flowRow}>
+                    <HugeIcon icon={Megaphone01Icon} size={18} className={styles.flowIcon} />
+                    <div className={styles.flowText}>
+                      <span className={styles.flowLabel}>Ad click</span>
+                      <span className={styles.flowMeta}>meta · summer_sale</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-            <a href="#features" className={styles.scrollHint} aria-label="Scroll to features">
+
+            <ul className={styles.channelStrip} aria-label="Supported touchpoints">
+              {CHANNELS.map((channel) => (
+                <li key={channel.label} className={styles.channelItem}>
+                  <HugeIcon icon={channel.icon} size={16} className={styles.channelIcon} />
+                  {channel.label}
+                </li>
+              ))}
+              <li className={`${styles.channelItem} ${styles.channelItemMuted}`}>+ more</li>
+            </ul>
+
+            <a href="#signals" className={styles.scrollHint} aria-label="Scroll to signals">
               <HugeIcon icon={ArrowDown01Icon} size={20} className={styles.scrollHintIcon} />
             </a>
           </div>
         </section>
 
-        <section id="features" className={`${styles.fold} ${styles.introFold}`}>
+        <section id="signals" className={`${styles.fold} ${styles.introFold}`}>
           <div className={styles.foldInner}>
-            <div className={styles.introGrid}>
-              <div className={styles.introCopy}>
-                <p className={styles.foldLabel}>Features</p>
-                <h2 className={styles.sectionTitle}>
-                  Built for growth teams
-                  <br />
-                  who care about data
-                </h2>
-                <p className={styles.introLead}>
-                  From first click to attributed install — see the full funnel in a dashboard you own, with
-                  measurement that respects user privacy.
-                </p>
-              </div>
-              <div className={styles.introGallery} aria-hidden>
-                {INTRO_PHOTOS.map((photo) => (
-                  <div key={photo.src} className={photo.className}>
-                    <img src={photo.src} alt={photo.alt} className={styles.photoImg} loading="lazy" />
-                  </div>
-                ))}
-              </div>
+            <div className={styles.statementBlock}>
+              <p className={styles.foldLabel}>Growth infrastructure</p>
+              <h2 className={styles.statementTitle}>
+                Fuel smarter decisions and faster growth
+              </h2>
+              <p className={styles.statementLead}>
+                with AI-ready data infrastructure and mobile-grade measurement across apps, web, CTV, PC, console,
+                and more.
+              </p>
             </div>
           </div>
         </section>
@@ -225,7 +222,7 @@ export function LandingPage() {
         <section id="how-it-works" className={`${styles.fold} ${styles.stepsFold}`}>
           <div className={styles.foldInner}>
             <p className={styles.foldLabel}>How it works</p>
-            <h2 className={styles.sectionTitle}>Three steps to attributed installs</h2>
+            <h2 className={styles.sectionTitle}>From signal to decision</h2>
             <ol className={styles.stepList}>
               {STEPS.map((step, i) => (
                 <li key={step.n} className={styles.stepItem} style={{ animationDelay: `${0.12 + i * 0.1}s` }}>
@@ -248,8 +245,10 @@ export function LandingPage() {
           <div className={styles.foldInner}>
             <div className={styles.cta}>
               <HugeIcon icon={Rocket01Icon} size={40} className={styles.ctaIcon} />
-              <h2 className={styles.ctaTitle}>Ready to own your attribution?</h2>
-              <p className={styles.ctaLead}>Create a project, issue an API key, and ship the SDK in minutes.</p>
+              <h2 className={styles.ctaTitle}>Ready to measure every touchpoint?</h2>
+              <p className={styles.ctaLead}>
+                Create a project, issue an API key, and start delivering signals that fuel growth.
+              </p>
               <Link to="/register" className={styles.btnPrimary}>
                 Create account
               </Link>
@@ -269,7 +268,9 @@ export function LandingPage() {
                   </Link>
                 </nav>
               </div>
-              <span className={styles.footerCopy}>Privacy-first install & campaign attribution</span>
+              <span className={styles.footerCopy}>
+                AI-ready infrastructure · mobile-grade measurement
+              </span>
             </footer>
           </div>
         </section>

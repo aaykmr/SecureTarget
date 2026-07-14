@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Static SPA — allow public marketing and docs; block app shells behind auth
+Disallow: /dashboard
+Disallow: /reset-password
+
+Sitemap: https://eventiqn.trusttargets.com/sitemap.xml

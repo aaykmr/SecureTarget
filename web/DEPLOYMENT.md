@@ -39,6 +39,8 @@ npm run build --workspace web
 
 Output: `web/dist/` (includes `404.html` for SPA routing on S3).
 
+Also ships `robots.txt` and `sitemap.xml` from `web/public/`. These must exist as real S3 objects — if missing, CloudFront custom error pages can rewrite `/robots.txt` to `index.html` (which Search Console reports as an invalid robots.txt).
+
 SDK bundles (`public/sdk.js`, `public/downloads/*.zip`) are copied during `prebuild`.
 
 ## GitHub Actions deploy
