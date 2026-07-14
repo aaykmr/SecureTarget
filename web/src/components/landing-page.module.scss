@@ -923,6 +923,80 @@
   line-height: 1.55;
 }
 
+.waitlistCard {
+  width: 100%;
+  max-width: 26rem;
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+  border-radius: 16px;
+  border: 1px solid var(--lp-border);
+  background: var(--lp-surface);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 12px 32px rgba(15, 23, 42, 0.06);
+  text-align: left;
+}
+
+.waitlistForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  width: 100%;
+  text-align: left;
+}
+
+.waitlistField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--lp-muted);
+
+  input,
+  textarea {
+    padding: 0.55rem 0.7rem;
+    border-radius: 8px;
+    border: 1px solid var(--lp-border);
+    background: var(--lp-bg);
+    color: var(--lp-text);
+    font: inherit;
+    font-size: 0.875rem;
+    line-height: 1.4;
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 4.25rem;
+  }
+}
+
+.waitlistCard .btnPrimary {
+  width: 100%;
+  justify-content: center;
+  margin-top: 0.25rem;
+  font-size: 0.9375rem;
+  padding: 0.7rem 1rem;
+}
+
+.waitlistError {
+  margin: 0;
+  color: #b91c1c;
+  font-size: var(--lp-caption);
+}
+
+.fieldError {
+  color: #b91c1c;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.waitlistSuccess {
+  margin: 0;
+  color: #15803d;
+  font-size: var(--lp-body);
+  font-weight: 500;
+}
+
 .footer {
   display: flex;
   flex-direction: column;

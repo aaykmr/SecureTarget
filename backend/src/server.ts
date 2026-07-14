@@ -122,7 +122,16 @@ const server = createServer(async (req, res) => {
 
   const path = requestPath(req.url);
   if (pgPool && isDashboardPath(path)) {
-    await handleDashboardApi(req, res, pgPool, path);
+    try {
+      await handleDashboardApi(req, res, pgPool, path);
+    } catch (e) {
+      console.error("[dashboard] unhandled error", path, e);
+      if (!res.headersSent) {
+        res.statusCode = 500;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ error: "Internal server error" }));
+      }
+    }
     return;
   }
 

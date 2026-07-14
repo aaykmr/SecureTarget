@@ -5,7 +5,6 @@ import { verifyAuthToken, signAuthToken } from "./jwt.js";
 import {
   createApiKeyForProject,
   createProject,
-  createUser,
   findUserByEmail,
   getProjectForUser,
   listApiKeysForProject,
@@ -13,6 +12,30 @@ import {
   revokeApiKey,
   verifyPassword,
 } from "./repos.js";
+import {
+  acceptInvite,
+  createGlobalAdminUser,
+  createInvite,
+  createOrganization,
+  findUserById,
+  getInviteByRawToken,
+  getOrganization,
+  isGlobalAdminEmail,
+  isOrgMember,
+  listOrgMembers,
+  listOrganizations,
+  listOrganizationsForUser,
+  listOrganizationsPaginated,
+  listPendingInvites,
+} from "./organizations.js";
+import { sendInviteEmail } from "../services/email.js";
+import {
+  createWaitlistInquiry,
+  getWaitlistInquiry,
+  linkInquiryOrganization,
+  listWaitlistInquiries,
+  setWaitlistInquiryDisabled,
+} from "./waitlist.js";
 import {
   campaignSummary,
   countSdkEvents,
@@ -31,6 +54,18 @@ import {
   updateTrackingLinkCampaignPresets,
   upsertAttributionSettings,
 } from "../services/trackingLinks.js";
+
+function appBaseUrl(): string {
+  return (
+    process.env.APP_PUBLIC_URL?.trim() ||
+    process.env.VITE_APP_URL?.trim() ||
+    "http://localhost:5173"
+  ).replace(/\/$/, "");
+}
+
+function inviteUrlForToken(token: string): string {
+  return `${appBaseUrl()}/invite?token=${encodeURIComponent(token)}`;
+}
 
 function readJsonBody(req: IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
@@ -61,11 +96,38 @@ function parseQuery(req: IncomingMessage): URLSearchParams {
 }
 
 function applyDashboardCors(req: IncomingMessage, res: ServerResponse): void {
-  const origin = process.env.DASHBOARD_CORS_ORIGIN ?? process.env.CORS_ORIGIN ?? "*";
-  res.setHeader("Access-Control-Allow-Origin", origin);
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  const configured =
+    process.env.DASHBOARD_CORS_ORIGIN?.trim() ||
+    process.env.CORS_ORIGIN?.trim() ||
+    "*";
+  const requestOrigin = String(req.headers.origin ?? "").trim();
+
+  let allowOrigin = configured;
+  if (configured === "*") {
+    // Reflect Origin when present so credentialed/local-dev browsers stay happy.
+    allowOrigin = requestOrigin || "*";
+  } else if (requestOrigin) {
+    const allowed = configured.split(",").map((o) => o.trim()).filter(Boolean);
+    if (allowed.includes(requestOrigin)) {
+      allowOrigin = requestOrigin;
+    }
+  }
+
+  res.setHeader("Access-Control-Allow-Origin", allowOrigin);
+  if (allowOrigin !== "*") {
+    res.setHeader("Vary", "Origin");
+  }
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, Access-Control-Request-Private-Network",
+  );
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.setHeader("Access-Control-Max-Age", "86400");
+
+  // Chrome Private Network Access / local-network preflight (localhost:3000 → :8080)
+  if (String(req.headers["access-control-request-private-network"] ?? "").toLowerCase() === "true") {
+    res.setHeader("Access-Control-Allow-Private-Network", "true");
+  }
 }
 
 function getBearerUserId(req: IncomingMessage): { userId: string; email: string } | null {
@@ -97,14 +159,24 @@ export async function handleDashboardApi(
 
   const parts = parseDashboardPath(path);
 
-  // POST /v1/auth/register
+  // POST /v1/auth/register — public signup disabled
   if (req.method === "POST" && parts[0] === "auth" && parts[1] === "register") {
+    sendJson(res, 403, { error: "Public registration is disabled. Request access via the waitlist." });
+    return true;
+  }
+
+  // POST /v1/auth/sign-up-internal — allowlisted global admin bootstrap
+  if (req.method === "POST" && parts[0] === "auth" && parts[1] === "sign-up-internal") {
     try {
       const body = (await readJsonBody(req)) as { email?: string; password?: string };
       const email = String(body.email ?? "").trim();
       const password = String(body.password ?? "");
       if (!email || !password) {
         sendJson(res, 400, { error: "Email and password are required." });
+        return true;
+      }
+      if (!isGlobalAdminEmail(email)) {
+        sendJson(res, 403, { error: "This email is not allowed for internal signup." });
         return true;
       }
       if (password.length < 8) {
@@ -115,10 +187,116 @@ export async function handleDashboardApi(
         sendJson(res, 409, { error: "An account with this email already exists." });
         return true;
       }
-      const user = await createUser(db, email, password);
-      sendJson(res, 201, { ok: true, userId: user.id });
+      const user = await createGlobalAdminUser(db, email, password);
+      const token = signAuthToken(user.id, user.email);
+      sendJson(res, 201, {
+        token,
+        user: { id: user.id, email: user.email, role: user.role },
+      });
     } catch {
       sendJson(res, 500, { error: "Registration failed." });
+    }
+    return true;
+  }
+
+  // POST /v1/auth/accept-invite
+  if (req.method === "POST" && parts[0] === "auth" && parts[1] === "accept-invite") {
+    try {
+      const body = (await readJsonBody(req)) as {
+        token?: string;
+        password?: string;
+        confirmPassword?: string;
+      };
+      const token = String(body.token ?? "").trim();
+      const password = String(body.password ?? "");
+      const confirmPassword = String(body.confirmPassword ?? "");
+      if (!token || !password) {
+        sendJson(res, 400, { error: "Token and password are required." });
+        return true;
+      }
+      if (password !== confirmPassword) {
+        sendJson(res, 400, { error: "Passwords do not match." });
+        return true;
+      }
+      if (password.length < 8) {
+        sendJson(res, 400, { error: "Password must be at least 8 characters." });
+        return true;
+      }
+      const user = await acceptInvite(db, token, password);
+      const jwt = signAuthToken(user.id, user.email);
+      sendJson(res, 200, {
+        token: jwt,
+        user: { id: user.id, email: user.email, role: user.role },
+      });
+    } catch (e) {
+      sendJson(res, 400, { error: e instanceof Error ? e.message : "Invite acceptance failed." });
+    }
+    return true;
+  }
+
+  // GET /v1/invites/:token — public preview
+  if (req.method === "GET" && parts[0] === "invites" && parts.length === 2) {
+    const invite = await getInviteByRawToken(db, parts[1]!);
+    if (!invite || invite.accepted_at || new Date(invite.expires_at).getTime() < Date.now()) {
+      sendJson(res, 404, { error: "Invite not found or expired." });
+      return true;
+    }
+    sendJson(res, 200, {
+      invite: {
+        email: invite.email,
+        organizationName: invite.organization_name,
+        expiresAt: invite.expires_at,
+      },
+    });
+    return true;
+  }
+
+  // POST /v1/waitlist — public homepage inquiries
+  if (req.method === "POST" && parts[0] === "waitlist" && parts.length === 1) {
+    try {
+      const body = (await readJsonBody(req)) as {
+        name?: string;
+        email?: string;
+        phone?: string;
+        organization?: string;
+        message?: string;
+      };
+      const name = String(body.name ?? "").trim();
+      const email = String(body.email ?? "").trim().toLowerCase();
+      const phone = String(body.phone ?? "").trim();
+      const organization = String(body.organization ?? "").trim();
+      const message = String(body.message ?? "").trim();
+
+      if (!name || name.length < 2) {
+        sendJson(res, 400, { error: "Name is required." });
+        return true;
+      }
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        sendJson(res, 400, { error: "A valid work email is required." });
+        return true;
+      }
+      if (!organization) {
+        sendJson(res, 400, { error: "Organization is required." });
+        return true;
+      }
+      if (phone) {
+        const normalized = phone.replace(/[\s-]/g, "");
+        if (!/^\+[1-9]\d{6,14}$/.test(normalized)) {
+          sendJson(res, 400, { error: "Enter a valid phone number with country code." });
+          return true;
+        }
+      }
+
+      const inquiry = await createWaitlistInquiry(db, {
+        name,
+        email,
+        phone: phone || null,
+        organization,
+        message,
+      });
+      sendJson(res, 201, { ok: true, id: inquiry.id });
+    } catch {
+      sendJson(res, 500, { error: "Could not submit inquiry." });
     }
     return true;
   }
@@ -135,7 +313,10 @@ export async function handleDashboardApi(
         return true;
       }
       const token = signAuthToken(user.id, user.email);
-      sendJson(res, 200, { token, user: { id: user.id, email: user.email } });
+      sendJson(res, 200, {
+        token,
+        user: { id: user.id, email: user.email, role: user.role },
+      });
     } catch {
       sendJson(res, 500, { error: "Login failed." });
     }
@@ -144,12 +325,29 @@ export async function handleDashboardApi(
 
   // GET /v1/auth/me
   if (req.method === "GET" && parts[0] === "auth" && parts[1] === "me") {
-    const auth = getBearerUserId(req);
-    if (!auth) {
-      sendJson(res, 401, { error: "Unauthorized" });
-      return true;
+    try {
+      const auth = getBearerUserId(req);
+      if (!auth) {
+        sendJson(res, 401, { error: "Unauthorized" });
+        return true;
+      }
+      const user = await findUserById(db, auth.userId);
+      if (!user) {
+        sendJson(res, 401, { error: "Unauthorized" });
+        return true;
+      }
+      const organizations =
+        user.role === "global_admin"
+          ? await listOrganizations(db)
+          : await listOrganizationsForUser(db, user.id);
+      sendJson(res, 200, {
+        user: { id: user.id, email: user.email, role: user.role },
+        organizations,
+      });
+    } catch (e) {
+      console.error("[dashboard] /v1/auth/me failed", e);
+      sendJson(res, 500, { error: "Failed to load session." });
     }
-    sendJson(res, 200, { user: { id: auth.userId, email: auth.email } });
     return true;
   }
 
@@ -192,29 +390,261 @@ export async function handleDashboardApi(
     return true;
   }
 
+  const user = await findUserById(db, auth.userId);
+  if (!user) {
+    sendJson(res, 401, { error: "Unauthorized" });
+    return true;
+  }
+  const isAdmin = user.role === "global_admin";
+
+  async function requireOrgAccess(orgId: string): Promise<boolean> {
+    if (isAdmin) return true;
+    return isOrgMember(db, orgId, user!.id);
+  }
+
+  // GET /v1/waitlist — global admin inquiries
+  if (req.method === "GET" && parts[0] === "waitlist" && parts.length === 1) {
+    if (!isAdmin) {
+      sendJson(res, 403, { error: "Global admin required." });
+      return true;
+    }
+    const query = parseQuery(req);
+    const statusRaw = query.get("status") ?? "all";
+    const status =
+      statusRaw === "open" || statusRaw === "converted" || statusRaw === "disabled"
+        ? statusRaw
+        : "all";
+    const result = await listWaitlistInquiries(db, {
+      q: query.get("q") ?? undefined,
+      page: parseInt(query.get("page") ?? "1", 10) || 1,
+      pageSize: parseInt(query.get("pageSize") ?? "20", 10) || 20,
+      status,
+    });
+    sendJson(res, 200, result);
+    return true;
+  }
+
+  // POST /v1/waitlist/:id/disable  { disabled?: boolean }
+  if (
+    req.method === "POST" &&
+    parts[0] === "waitlist" &&
+    parts[2] === "disable" &&
+    parts.length === 3
+  ) {
+    if (!isAdmin) {
+      sendJson(res, 403, { error: "Global admin required." });
+      return true;
+    }
+    const body = (await readJsonBody(req)) as { disabled?: boolean };
+    const disabled = body.disabled !== false;
+    const inquiry = await setWaitlistInquiryDisabled(db, parts[1]!, disabled);
+    if (!inquiry) {
+      sendJson(res, 404, { error: "Inquiry not found." });
+      return true;
+    }
+    sendJson(res, 200, { inquiry });
+    return true;
+  }
+
+  // POST /v1/waitlist/:id/create-organization
+  if (
+    req.method === "POST" &&
+    parts[0] === "waitlist" &&
+    parts[2] === "create-organization" &&
+    parts.length === 3
+  ) {
+    if (!isAdmin) {
+      sendJson(res, 403, { error: "Global admin required." });
+      return true;
+    }
+    const inquiry = await getWaitlistInquiry(db, parts[1]!);
+    if (!inquiry) {
+      sendJson(res, 404, { error: "Inquiry not found." });
+      return true;
+    }
+    if (inquiry.disabled_at) {
+      sendJson(res, 400, { error: "This inquiry is disabled." });
+      return true;
+    }
+    if (inquiry.created_organization_id) {
+      sendJson(res, 409, { error: "An organization was already created from this inquiry." });
+      return true;
+    }
+    const body = (await readJsonBody(req)) as { name?: string };
+    const name = String(body.name ?? inquiry.organization).trim();
+    if (!name) {
+      sendJson(res, 400, { error: "Organization name is required." });
+      return true;
+    }
+    const organization = await createOrganization(db, name, user.id);
+    await linkInquiryOrganization(db, inquiry.id, organization.id);
+    sendJson(res, 201, { organization, inquiryId: inquiry.id });
+    return true;
+  }
+
+  // GET /v1/organizations
+  if (req.method === "GET" && parts[0] === "organizations" && parts.length === 1) {
+    const query = parseQuery(req);
+    const pageRaw = query.get("page");
+    const pageSizeRaw = query.get("pageSize");
+    const q = query.get("q") ?? undefined;
+    const wantsPaged = pageRaw != null || pageSizeRaw != null || q != null;
+
+    if (wantsPaged) {
+      const result = await listOrganizationsPaginated(db, {
+        q,
+        page: parseInt(pageRaw ?? "1", 10) || 1,
+        pageSize: parseInt(pageSizeRaw ?? "20", 10) || 20,
+        forUserId: isAdmin ? undefined : user.id,
+      });
+      sendJson(res, 200, result);
+      return true;
+    }
+
+    if (!isAdmin) {
+      const organizations = await listOrganizationsForUser(db, user.id);
+      sendJson(res, 200, { organizations });
+      return true;
+    }
+    const organizations = await listOrganizations(db);
+    sendJson(res, 200, { organizations });
+    return true;
+  }
+
+  // POST /v1/organizations
+  if (req.method === "POST" && parts[0] === "organizations" && parts.length === 1) {
+    if (!isAdmin) {
+      sendJson(res, 403, { error: "Global admin required." });
+      return true;
+    }
+    const body = (await readJsonBody(req)) as { name?: string };
+    const name = String(body.name ?? "").trim();
+    if (!name) {
+      sendJson(res, 400, { error: "Organization name is required." });
+      return true;
+    }
+    const organization = await createOrganization(db, name, user.id);
+    sendJson(res, 201, { organization });
+    return true;
+  }
+
+  // GET /v1/organizations/:id
+  if (req.method === "GET" && parts[0] === "organizations" && parts.length === 2) {
+    const org = await getOrganization(db, parts[1]!);
+    if (!org || !(await requireOrgAccess(org.id))) {
+      sendJson(res, 404, { error: "Organization not found." });
+      return true;
+    }
+    sendJson(res, 200, { organization: org });
+    return true;
+  }
+
+  // GET /v1/organizations/:id/members
+  if (
+    req.method === "GET" &&
+    parts[0] === "organizations" &&
+    parts[2] === "members" &&
+    parts.length === 3
+  ) {
+    const orgId = parts[1]!;
+    if (!(await requireOrgAccess(orgId))) {
+      sendJson(res, 404, { error: "Organization not found." });
+      return true;
+    }
+    const members = await listOrgMembers(db, orgId);
+    const pendingInvites = await listPendingInvites(db, orgId);
+    sendJson(res, 200, {
+      members,
+      pendingInvites: pendingInvites.map((i) => ({
+        id: i.id,
+        email: i.email,
+        expiresAt: i.expires_at,
+        createdAt: i.created_at,
+      })),
+    });
+    return true;
+  }
+
+  // POST /v1/organizations/:id/invites
+  if (
+    req.method === "POST" &&
+    parts[0] === "organizations" &&
+    parts[2] === "invites" &&
+    parts.length === 3
+  ) {
+    const orgId = parts[1]!;
+    if (!(await requireOrgAccess(orgId))) {
+      sendJson(res, 404, { error: "Organization not found." });
+      return true;
+    }
+    const org = await getOrganization(db, orgId);
+    if (!org) {
+      sendJson(res, 404, { error: "Organization not found." });
+      return true;
+    }
+    const body = (await readJsonBody(req)) as { email?: string };
+    const email = String(body.email ?? "").trim().toLowerCase();
+    if (!email || !email.includes("@")) {
+      sendJson(res, 400, { error: "A valid email is required." });
+      return true;
+    }
+    const { invite, rawToken } = await createInvite(db, {
+      organizationId: orgId,
+      email,
+      invitedByUserId: user.id,
+    });
+    const inviteUrl = inviteUrlForToken(rawToken);
+    const emailResult = await sendInviteEmail({
+      to: email,
+      organizationName: org.name,
+      inviteUrl,
+    });
+    sendJson(res, 201, {
+      invite: {
+        id: invite.id,
+        email: invite.email,
+        expiresAt: invite.expires_at,
+      },
+      inviteUrl,
+      emailSent: emailResult.sent,
+      emailError: emailResult.error ?? null,
+    });
+    return true;
+  }
+
   // GET /v1/projects
   if (req.method === "GET" && parts[0] === "projects" && parts.length === 1) {
-    const projects = await listProjectsForUser(db, auth.userId);
+    const organizationId = parseQuery(req).get("organizationId") ?? undefined;
+    const projects = await listProjectsForUser(db, user.id, isAdmin, organizationId || undefined);
     sendJson(res, 200, { projects });
     return true;
   }
 
   // POST /v1/projects
   if (req.method === "POST" && parts[0] === "projects" && parts.length === 1) {
-    const body = (await readJsonBody(req)) as { name?: string };
+    const body = (await readJsonBody(req)) as { name?: string; organizationId?: string };
     const name = String(body.name ?? "").trim();
+    const organizationId = String(body.organizationId ?? "").trim();
     if (!name) {
       sendJson(res, 400, { error: "Project name is required." });
       return true;
     }
-    const project = await createProject(db, auth.userId, name);
+    if (!organizationId) {
+      sendJson(res, 400, { error: "organizationId is required." });
+      return true;
+    }
+    if (!(await requireOrgAccess(organizationId))) {
+      sendJson(res, 403, { error: "Not a member of this organization." });
+      return true;
+    }
+    const project = await createProject(db, user.id, name, organizationId);
     sendJson(res, 201, { project });
     return true;
   }
 
   // GET /v1/projects/:id
   if (req.method === "GET" && parts[0] === "projects" && parts.length === 2) {
-    const project = await getProjectForUser(db, parts[1]!, auth.userId);
+    const project = await getProjectForUser(db, parts[1]!, user.id, isAdmin);
     if (!project) {
       sendJson(res, 404, { error: "Project not found." });
       return true;
@@ -225,7 +655,7 @@ export async function handleDashboardApi(
 
   // GET /v1/projects/:id/api-keys
   if (req.method === "GET" && parts[0] === "projects" && parts[2] === "api-keys" && parts.length === 3) {
-    const project = await getProjectForUser(db, parts[1]!, auth.userId);
+    const project = await getProjectForUser(db, parts[1]!, user.id, isAdmin);
     if (!project) {
       sendJson(res, 404, { error: "Project not found." });
       return true;
@@ -237,7 +667,7 @@ export async function handleDashboardApi(
 
   // POST /v1/projects/:id/api-keys
   if (req.method === "POST" && parts[0] === "projects" && parts[2] === "api-keys" && parts.length === 3) {
-    const project = await getProjectForUser(db, parts[1]!, auth.userId);
+    const project = await getProjectForUser(db, parts[1]!, user.id, isAdmin);
     if (!project) {
       sendJson(res, 404, { error: "Project not found." });
       return true;
@@ -254,7 +684,7 @@ export async function handleDashboardApi(
     parts[2] === "api-keys" &&
     parts.length === 4
   ) {
-    const project = await getProjectForUser(db, parts[1]!, auth.userId);
+    const project = await getProjectForUser(db, parts[1]!, user.id, isAdmin);
     if (!project) {
       sendJson(res, 404, { error: "Project not found." });
       return true;
@@ -265,7 +695,7 @@ export async function handleDashboardApi(
   }
 
   const projectId = parts[1]!;
-  const project = await getProjectForUser(db, projectId, auth.userId);
+  const project = await getProjectForUser(db, projectId, user.id, isAdmin);
 
   // GET /v1/projects/:id/events
   if (req.method === "GET" && parts[0] === "projects" && parts[2] === "events" && parts.length === 3) {
@@ -512,9 +942,11 @@ export async function handleDashboardApi(
 }
 
 export function isDashboardPath(path: string): boolean {
-  return path === "/v1/auth/register" ||
-    path === "/v1/auth/login" ||
-    path === "/v1/auth/me" ||
+  return (
+    path.startsWith("/v1/auth/") ||
     path.startsWith("/v1/projects") ||
-    path.startsWith("/v1/auth/");
+    path.startsWith("/v1/organizations") ||
+    path.startsWith("/v1/invites/") ||
+    path.startsWith("/v1/waitlist")
+  );
 }

@@ -29,11 +29,48 @@ async function request<T>(
   return data;
 }
 
-export type User = { id: string; email: string };
+export type UserRole = "global_admin" | "member";
+
+export type User = { id: string; email: string; role: UserRole };
+
+export type Organization = {
+  id: string;
+  name: string;
+  created_by_user_id: string | null;
+  created_at: string;
+};
+
+export type OrgMember = {
+  organization_id: string;
+  user_id: string;
+  role: "owner" | "member";
+  email: string;
+  created_at: string;
+};
+
+export type PendingInvite = {
+  id: string;
+  email: string;
+  expiresAt: string;
+  createdAt: string;
+};
+
+export type WaitlistInquiry = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  organization: string;
+  message: string;
+  created_organization_id: string | null;
+  disabled_at: string | null;
+  created_at: string;
+};
 
 export type Project = {
   id: string;
   user_id: string;
+  organization_id: string | null;
   name: string;
   company_id: string;
   created_at: string;
@@ -119,11 +156,22 @@ export type AttributionSettings = {
 };
 
 export const api = {
-  register(email: string, password: string) {
-    return request<{ ok: boolean }>("/v1/auth/register", {
+  signUpInternal(email: string, password: string) {
+    return request<{ token: string; user: User }>("/v1/auth/sign-up-internal", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
+  },
+  acceptInvite(token: string, password: string, confirmPassword: string) {
+    return request<{ token: string; user: User }>("/v1/auth/accept-invite", {
+      method: "POST",
+      body: JSON.stringify({ token, password, confirmPassword }),
+    });
+  },
+  getInvite(token: string) {
+    return request<{
+      invite: { email: string; organizationName: string; expiresAt: string };
+    }>(`/v1/invites/${encodeURIComponent(token)}`);
   },
   login(email: string, password: string) {
     return request<{ token: string; user: User }>("/v1/auth/login", {
@@ -144,16 +192,116 @@ export const api = {
     });
   },
   me(token: string) {
-    return request<{ user: User }>("/v1/auth/me", { token });
+    return request<{ user: User; organizations: Organization[] }>("/v1/auth/me", { token });
   },
-  listProjects(token: string) {
-    return request<{ projects: Project[] }>("/v1/projects", { token });
+  listOrganizations(token: string) {
+    return request<{ organizations: Organization[] }>("/v1/organizations", { token });
   },
-  createProject(token: string, name: string) {
-    return request<{ project: Project }>("/v1/projects", {
+  searchOrganizations(
+    token: string,
+    params: { q?: string; page?: number; pageSize?: number } = {},
+  ) {
+    const q = new URLSearchParams();
+    q.set("page", String(params.page ?? 1));
+    q.set("pageSize", String(params.pageSize ?? 20));
+    if (params.q) q.set("q", params.q);
+    return request<{
+      organizations: Organization[];
+      total: number;
+      page: number;
+      pageSize: number;
+      totalPages: number;
+    }>(`/v1/organizations?${q.toString()}`, { token });
+  },
+  createOrganization(token: string, name: string) {
+    return request<{ organization: Organization }>("/v1/organizations", {
       method: "POST",
       token,
       body: JSON.stringify({ name }),
+    });
+  },
+  getOrganization(token: string, orgId: string) {
+    return request<{ organization: Organization }>(`/v1/organizations/${orgId}`, { token });
+  },
+  listOrgMembers(token: string, orgId: string) {
+    return request<{ members: OrgMember[]; pendingInvites: PendingInvite[] }>(
+      `/v1/organizations/${orgId}/members`,
+      { token },
+    );
+  },
+  inviteToOrganization(token: string, orgId: string, email: string) {
+    return request<{
+      invite: { id: string; email: string; expiresAt: string };
+      inviteUrl: string;
+      emailSent: boolean;
+      emailError: string | null;
+    }>(`/v1/organizations/${orgId}/invites`, {
+      method: "POST",
+      token,
+      body: JSON.stringify({ email }),
+    });
+  },
+  submitWaitlist(body: {
+    name: string;
+    email: string;
+    phone?: string;
+    organization: string;
+    message?: string;
+  }) {
+    return request<{ ok: boolean; id: string }>("/v1/waitlist", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+  listWaitlist(
+    token: string,
+    params: {
+      q?: string;
+      page?: number;
+      pageSize?: number;
+      status?: "all" | "open" | "converted" | "disabled";
+    } = {},
+  ) {
+    const q = new URLSearchParams();
+    if (params.q) q.set("q", params.q);
+    if (params.page && params.page > 1) q.set("page", String(params.page));
+    if (params.pageSize) q.set("pageSize", String(params.pageSize));
+    if (params.status && params.status !== "all") q.set("status", params.status);
+    const qs = q.toString();
+    return request<{
+      inquiries: WaitlistInquiry[];
+      total: number;
+      page: number;
+      pageSize: number;
+      totalPages: number;
+    }>(`/v1/waitlist${qs ? `?${qs}` : ""}`, { token });
+  },
+  setWaitlistDisabled(token: string, inquiryId: string, disabled: boolean) {
+    return request<{ inquiry: WaitlistInquiry }>(`/v1/waitlist/${inquiryId}/disable`, {
+      method: "POST",
+      token,
+      body: JSON.stringify({ disabled }),
+    });
+  },
+  createOrganizationFromInquiry(token: string, inquiryId: string, name?: string) {
+    return request<{ organization: Organization; inquiryId: string }>(
+      `/v1/waitlist/${inquiryId}/create-organization`,
+      {
+        method: "POST",
+        token,
+        body: JSON.stringify(name ? { name } : {}),
+      },
+    );
+  },
+  listProjects(token: string, organizationId?: string) {
+    const q = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : "";
+    return request<{ projects: Project[] }>(`/v1/projects${q}`, { token });
+  },
+  createProject(token: string, name: string, organizationId: string) {
+    return request<{ project: Project }>("/v1/projects", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ name, organizationId }),
     });
   },
   getProject(token: string, projectId: string) {

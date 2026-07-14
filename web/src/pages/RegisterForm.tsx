@@ -1,15 +1,27 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "@/api/client";
+import { useAuth } from "@/auth/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import styles from "./RegisterForm.module.scss";
 
-export function RegisterForm() {
+type Mode = "internal" | "disabled";
+
+export function RegisterForm({ mode = "internal" }: { mode?: Mode }) {
   const navigate = useNavigate();
+  const { setSession } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  if (mode === "disabled") {
+    return (
+      <Card className={styles.card}>
+        <p className={styles.bannerError}>Public registration is closed. Join the waitlist on the homepage.</p>
+      </Card>
+    );
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -24,8 +36,9 @@ export function RegisterForm() {
     }
     setPending(true);
     try {
-      await api.register(email, password);
-      navigate("/login?registered=1");
+      const { token, user } = await api.signUpInternal(email, password);
+      await setSession(token, user);
+      navigate("/dashboard");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Registration failed.");
     } finally {
@@ -55,7 +68,7 @@ export function RegisterForm() {
           autoComplete="new-password"
         />
         <Button type="submit" disabled={pending} variant="primary" fullWidth>
-          {pending ? "Creating account…" : "Create account"}
+          {pending ? "Creating account…" : "Create admin account"}
         </Button>
       </form>
     </Card>

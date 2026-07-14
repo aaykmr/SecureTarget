@@ -151,7 +151,14 @@ AUTH_SECRET=long-random-secret
 JWT_SECRET=long-random-secret
 API_KEY_PEPPER=long-random-pepper
 
-DASHBOARD_CORS_ORIGIN=https://app.yourdomain.com
+# Invite email links point at the SPA
+APP_PUBLIC_URL=https://eventiqn.trusttargets.com
+
+# AWS SES (instance role or access keys). Verify SES_FROM_EMAIL in SES.
+AWS_REGION=ap-south-1
+SES_FROM_EMAIL=noreply@yourdomain.com
+
+DASHBOARD_CORS_ORIGIN=https://eventiqn.trusttargets.com
 CORS_ORIGIN=*
 
 PORT=8080
@@ -355,9 +362,15 @@ GitHub Actions **does not** deploy nginx config — only certbot renewal and man
 
 | Method | Path |
 |--------|------|
-| POST | `/v1/auth/register` |
+| POST | `/v1/auth/sign-up-internal` (allowlisted email only) |
+| POST | `/v1/auth/accept-invite` |
 | POST | `/v1/auth/login` |
 | GET | `/v1/auth/me` |
+| GET | `/v1/invites/:token` (public preview) |
+| GET/POST | `/v1/organizations` (global_admin) |
+| GET | `/v1/organizations/:id` |
+| GET | `/v1/organizations/:id/members` |
+| POST | `/v1/organizations/:id/invites` |
 | GET/POST | `/v1/projects` |
 | GET | `/v1/projects/:id` |
 | GET/POST | `/v1/projects/:id/api-keys` |
@@ -371,7 +384,9 @@ GitHub Actions **does not** deploy nginx config — only certbot renewal and man
 | GET | `/v1/projects/:id/attribution/installs` |
 | GET | `/v1/projects/:id/skan/postbacks` |
 
-Set `DASHBOARD_CORS_ORIGIN` to your CloudFront SPA origin.
+Public `/v1/auth/register` returns 403. Set `DASHBOARD_CORS_ORIGIN` and `APP_PUBLIC_URL` to your CloudFront SPA origin.
+
+Homepage waitlist posts to the shared Google Apps Script (`VITE_GOOGLE_SHEETS_SCRIPT_URL`) with `sheet: "EventIQNWaitlist"`. Redeploy Apps Script after updating `Code.gs`.
 
 ---
 

@@ -50,6 +50,7 @@ jobs:
           VITE_API_URL: ${{ env.VITE_API_URL }}
           VITE_INGEST_URL: ${{ env.VITE_INGEST_URL }}
           VITE_APP_URL: ${{ env.VITE_APP_URL }}
+          VITE_GOOGLE_SHEETS_SCRIPT_URL: ${{ secrets.VITE_GOOGLE_SHEETS_SCRIPT_URL }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4

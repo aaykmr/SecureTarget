@@ -23,9 +23,9 @@ export function LoginPage() {
       </div>
       <LoginForm registered={Boolean(registered)} reset={Boolean(reset)} />
       <p className={styles.footer}>
-        No account?{" "}
-        <Link to="/register" className={styles.footerLink}>
-          Register
+        Need access?{" "}
+        <Link to="/#waitlist" className={styles.footerLink}>
+          Start tracking
         </Link>
       </p>
     </div>

@@ -1,3 +1,4 @@
+import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import {
   Analytics01Icon,
@@ -13,8 +14,27 @@ import {
   Tv01Icon,
   WebDesign01Icon,
 } from "@hugeicons/core-free-icons";
+import { api, ApiError } from "@/api/client";
 import { HugeIcon } from "@/components/huge-icon";
+import { PhoneCountryField } from "@/components/phone-country-field";
+import {
+  formatPhoneE164,
+  validateWaitlistForm,
+  type WaitlistFieldErrors,
+  type WaitlistFormValues,
+} from "@/lib/waitlist-form";
+import { getDefaultCountryOption, type CountryDialOption } from "@/lib/country-dial-options";
 import styles from "./landing-page.module.scss";
+
+const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SHEETS_SCRIPT_URL?.trim();
+
+const EMPTY_WAITLIST: WaitlistFormValues = {
+  name: "",
+  email: "",
+  nationalNumber: "",
+  organization: "",
+  message: "",
+};
 
 const CHANNELS = [
   { label: "Apps", icon: SmartPhone01Icon },
@@ -82,6 +102,62 @@ const STEPS = [
 ] as const;
 
 export function LandingPage() {
+  const [waitlistSent, setWaitlistSent] = useState(false);
+  const [waitlistSubmitting, setWaitlistSubmitting] = useState(false);
+  const [waitlistError, setWaitlistError] = useState<string | null>(null);
+  const [values, setValues] = useState<WaitlistFormValues>(EMPTY_WAITLIST);
+  const [fieldErrors, setFieldErrors] = useState<WaitlistFieldErrors>({});
+  const [country, setCountry] = useState<CountryDialOption>(getDefaultCountryOption);
+
+  function updateField<K extends keyof WaitlistFormValues>(key: K, value: WaitlistFormValues[K]) {
+    setValues((prev) => ({ ...prev, [key]: value }));
+    setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
+  }
+
+  async function onWaitlistSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setWaitlistError(null);
+    const errors = validateWaitlistForm(values);
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    const digits = values.nationalNumber.replace(/\D/g, "");
+    const phone = digits ? formatPhoneE164(country.dial, values.nationalNumber) : "";
+    const payload = {
+      name: values.name.trim(),
+      email: values.email.trim(),
+      phone,
+      organization: values.organization.trim(),
+      message: values.message.trim(),
+    };
+
+    setWaitlistSubmitting(true);
+    try {
+      await api.submitWaitlist(payload);
+      if (SCRIPT_URL) {
+        try {
+          await fetch(SCRIPT_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ sheet: "EventIQNWaitlist", ...payload }),
+          });
+        } catch {
+          // Sheets is best-effort mirror; API is source of truth for admin.
+        }
+      }
+      setWaitlistSent(true);
+      setValues(EMPTY_WAITLIST);
+      setCountry(getDefaultCountryOption());
+      setFieldErrors({});
+    } catch (err) {
+      setWaitlistError(
+        err instanceof ApiError ? err.message : "Could not submit. Please try again or email hello@trusttargets.com.",
+      );
+    } finally {
+      setWaitlistSubmitting(false);
+    }
+  }
+
   return (
     <div className={styles.landing}>
       <div className={styles.glow} aria-hidden />
@@ -103,9 +179,9 @@ export function LandingPage() {
             <Link to="/login" className={styles.headerLink}>
               Sign in
             </Link>
-            <Link to="/register" className={styles.btnHeader}>
-              Get started
-            </Link>
+            <a href="#waitlist" className={styles.btnHeader}>
+              Start tracking
+            </a>
           </nav>
         </div>
       </header>
@@ -124,10 +200,10 @@ export function LandingPage() {
                   and web to CTV, PC, console, and beyond.
                 </p>
                 <div className={styles.heroActions}>
-                  <Link to="/register" className={styles.btnPrimary}>
+                  <a href="#waitlist" className={styles.btnPrimary}>
                     <HugeIcon icon={Rocket01Icon} size={18} />
-                    Start free
-                  </Link>
+                    Start tracking
+                  </a>
                   <Link to="/login" className={styles.btnSecondary}>
                     Sign in
                   </Link>
@@ -241,17 +317,80 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section className={`${styles.fold} ${styles.ctaFold}`}>
+        <section id="waitlist" className={`${styles.fold} ${styles.ctaFold}`}>
           <div className={styles.foldInner}>
             <div className={styles.cta}>
               <HugeIcon icon={Rocket01Icon} size={40} className={styles.ctaIcon} />
-              <h2 className={styles.ctaTitle}>Ready to measure every touchpoint?</h2>
+              <h2 className={styles.ctaTitle}>Request early access</h2>
               <p className={styles.ctaLead}>
-                Create a project, issue an API key, and start delivering signals that fuel growth.
+                Public signup is invite-only. Tell us about your org and we&apos;ll get you set up to start tracking.
               </p>
-              <Link to="/register" className={styles.btnPrimary}>
-                Create account
-              </Link>
+              <div className={styles.waitlistCard}>
+                {waitlistSent ? (
+                  <p className={styles.waitlistSuccess}>Thanks — you&apos;re on the list.</p>
+                ) : (
+                  <form className={styles.waitlistForm} onSubmit={onWaitlistSubmit} noValidate>
+                    {waitlistError ? <p className={styles.waitlistError}>{waitlistError}</p> : null}
+                    <label className={styles.waitlistField}>
+                      <span>Name</span>
+                      <input
+                        name="name"
+                        autoComplete="name"
+                        value={values.name}
+                        onChange={(e) => updateField("name", e.target.value)}
+                        aria-invalid={Boolean(fieldErrors.name)}
+                      />
+                      {fieldErrors.name ? <span className={styles.fieldError}>{fieldErrors.name}</span> : null}
+                    </label>
+                    <label className={styles.waitlistField}>
+                      <span>Work email</span>
+                      <input
+                        name="email"
+                        type="email"
+                        autoComplete="email"
+                        value={values.email}
+                        onChange={(e) => updateField("email", e.target.value)}
+                        aria-invalid={Boolean(fieldErrors.email)}
+                      />
+                      {fieldErrors.email ? <span className={styles.fieldError}>{fieldErrors.email}</span> : null}
+                    </label>
+                    <PhoneCountryField
+                      country={country}
+                      nationalNumber={values.nationalNumber}
+                      onCountryChange={setCountry}
+                      onNationalNumberChange={(v) => updateField("nationalNumber", v)}
+                      disabled={waitlistSubmitting}
+                      error={fieldErrors.nationalNumber}
+                    />
+                    <label className={styles.waitlistField}>
+                      <span>Organization</span>
+                      <input
+                        name="organization"
+                        autoComplete="organization"
+                        value={values.organization}
+                        onChange={(e) => updateField("organization", e.target.value)}
+                        aria-invalid={Boolean(fieldErrors.organization)}
+                      />
+                      {fieldErrors.organization ? (
+                        <span className={styles.fieldError}>{fieldErrors.organization}</span>
+                      ) : null}
+                    </label>
+                    <label className={styles.waitlistField}>
+                      <span>Message</span>
+                      <textarea
+                        name="message"
+                        rows={3}
+                        placeholder="What are you looking to measure?"
+                        value={values.message}
+                        onChange={(e) => updateField("message", e.target.value)}
+                      />
+                    </label>
+                    <button type="submit" className={styles.btnPrimary} disabled={waitlistSubmitting}>
+                      {waitlistSubmitting ? "Submitting…" : "Start tracking"}
+                    </button>
+                  </form>
+                )}
+              </div>
             </div>
             <footer className={styles.footer}>
               <div className={styles.footerTop}>

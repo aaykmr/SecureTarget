@@ -1,0 +1,236 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(10rem, 14rem) auto;
+  gap: 1rem;
+  align-items: end;
+}
+
+@media (max-width: 720px) {
+  .filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+.selectLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+}
+
+.select {
+  padding: 0.5rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-surface, #fff);
+  color: inherit;
+  font: inherit;
+}
+
+.error {
+  color: var(--color-accent-error, #b91c1c);
+  font-size: 0.875rem;
+  margin: 0 0 0.75rem;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.strong {
+  font-weight: 500;
+}
+
+.muted {
+  font-size: 0.8125rem;
+  color: var(--color-muted, #64748b);
+}
+
+.message {
+  max-width: 18rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.875rem;
+}
+
+.contact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+
+  a {
+    color: var(--color-brand, #1877f2);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.copyRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.copyValue {
+  font-size: 0.8125rem;
+  color: var(--color-brand, #1877f2);
+  text-decoration: none;
+  word-break: break-all;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.copyBtn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-muted, #64748b);
+
+  &:hover {
+    color: var(--color-fg-default, #0f172a);
+    background: color-mix(in srgb, var(--color-surface-elevated, #fff) 80%, transparent);
+  }
+}
+
+.badge {
+  display: inline-block;
+  margin-top: 0.35rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #9a3412;
+  background: #ffedd5;
+}
+
+.rowDisabled {
+  opacity: 0.72;
+}
+
+.actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.tooltipWrap {
+  position: relative;
+  display: inline-flex;
+
+  &::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 0.4rem);
+    left: 50%;
+    transform: translateX(-50%) translateY(0.15rem);
+    padding: 0.35rem 0.55rem;
+    border-radius: 6px;
+    background: #0f172a;
+    color: #f8fafc;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.2;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 0.12s ease,
+      transform 0.12s ease,
+      visibility 0.12s ease;
+    z-index: 20;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.2);
+  }
+
+  &:hover::after,
+  &:focus-within::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-fg-muted, #64748b);
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-accent-interactive, #1877f2) 12%, transparent);
+    color: var(--color-accent-interactive, #1877f2);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent-interactive, #1877f2) 35%, transparent);
+  }
+}
+
+.orgLink {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-success, #15803d);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.pageMeta {
+  font-size: 0.8125rem;
+  color: var(--color-muted, #64748b);
+}

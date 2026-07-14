@@ -8,7 +8,7 @@ import { DashboardPanel } from "@/components/dashboard/panel";
 import styles from "./DashboardPage.module.scss";
 
 export function DashboardPage() {
-  const { token } = useAuth();
+  const { token, currentOrganizationId } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,14 +18,14 @@ export function DashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      const { projects: list } = await api.listProjects(token);
+      const { projects: list } = await api.listProjects(token, currentOrganizationId ?? undefined);
       setProjects(list);
     } catch {
       setError("Could not load projects.");
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, currentOrganizationId]);
 
   useEffect(() => {
     void loadProjects();

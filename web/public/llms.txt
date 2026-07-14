@@ -4,7 +4,7 @@ EventIQN is an attribution and event ingest platform. Apps send events to the in
 
 ## Dashboard (human setup)
 
-1. Register at the dashboard SPA (example: https://eventiqn.trusttargets.com/register).
+1. Sign in at the dashboard SPA (invite-only; join the homepage waitlist for access).
 2. Create a project — note the project-specific `companyId`.
 3. Generate an API key in the project overview **API keys** panel. The full key is shown once; only a prefix is stored afterward.
 4. Use the Integration panel for Web, iOS, and Android setup steps.
@@ -67,9 +67,12 @@ Base URL: same host as ingest in typical deployments.
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| POST | /v1/auth/register | Create account |
 | POST | /v1/auth/login | Sign in (Bearer token) |
-| GET | /v1/auth/me | Current user |
+| POST | /v1/auth/accept-invite | Accept org invite + set password |
+| GET | /v1/auth/me | Current user + organizations |
+| GET/POST | /v1/organizations | List/create orgs (global_admin) |
+| GET | /v1/organizations/:id/members | Members + pending invites |
+| POST | /v1/organizations/:id/invites | Invite user by email |
 | GET | /v1/projects | List projects |
 | POST | /v1/projects | Create project |
 | GET | /v1/projects/:id | Project details |

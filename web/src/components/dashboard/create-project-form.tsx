@@ -7,19 +7,19 @@ import { Input } from "@/components/ui/input";
 import styles from "./create-project-form.module.scss";
 
 export function CreateProjectForm({ onCreated }: { onCreated?: () => void }) {
-  const { token } = useAuth();
+  const { token, currentOrganization } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!token) return;
+    if (!token || !currentOrganization) return;
     setError(null);
     setPending(true);
     const form = e.currentTarget;
     const name = (form.elements.namedItem("name") as HTMLInputElement).value.trim();
     try {
-      await api.createProject(token, name);
+      await api.createProject(token, name, currentOrganization.id);
       form.reset();
       onCreated?.();
     } catch (err) {
@@ -29,10 +29,23 @@ export function CreateProjectForm({ onCreated }: { onCreated?: () => void }) {
     }
   }
 
+  if (!currentOrganization) {
+    return (
+      <DashboardPanel title="New project">
+        <p className={styles.error}>
+          Select an organization in the sidebar before creating a project.
+        </p>
+      </DashboardPanel>
+    );
+  }
+
   return (
     <DashboardPanel title="New project">
       <form onSubmit={onSubmit} className={styles.form}>
         {error ? <p className={styles.error}>{error}</p> : null}
+        <p className={styles.orgHint}>
+          Organization: <strong>{currentOrganization.name}</strong>
+        </p>
         <Input name="name" label="Name" required placeholder="My website" />
         <Button type="submit" disabled={pending} size="sm" alignSelfStart>
           {pending ? "Creating…" : "Create project"}

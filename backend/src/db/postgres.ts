@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
+import { migrateOrganizationsSchema } from "./migrateOrganizations.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -22,6 +23,7 @@ export async function initPostgresSchema(): Promise<void> {
   const sql = readFileSync(resolve(__dirname, "postgres-schema.sql"), "utf8");
   const db = getPostgresPool();
   await db.query(sql);
+  await migrateOrganizationsSchema(db);
 }
 
 export async function closePostgresPool(): Promise<void> {

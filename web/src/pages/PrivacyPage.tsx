@@ -19,7 +19,7 @@ export function PrivacyPage() {
         <ul>
           <li>
             <strong>Account information</strong> — name, email address, and authentication credentials when you
-            register or sign in.
+            register or sign in with an invite.
           </li>
           <li>
             <strong>Project and API data</strong> — project names, API keys (stored in hashed form), campaign
