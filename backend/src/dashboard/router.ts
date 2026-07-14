@@ -16,17 +16,25 @@ import {
   acceptInvite,
   createGlobalAdminUser,
   createInvite,
+  createMemberUser,
   createOrganization,
+  createPersonalOrganizationForUser,
   findUserById,
   getInviteByRawToken,
   getOrganization,
   isGlobalAdminEmail,
   isOrgMember,
+  isOrgOwner,
   listOrgMembers,
   listOrganizations,
   listOrganizationsForUser,
   listOrganizationsPaginated,
+  listOrganizationsWithAccess,
   listPendingInvites,
+  updateMemberPermissions,
+  userHasOrgTab,
+  type OrgTabKey,
+  type OrgTabPermissions,
 } from "./organizations.js";
 import { sendInviteEmail } from "../services/email.js";
 import {
@@ -121,7 +129,7 @@ function applyDashboardCors(req: IncomingMessage, res: ServerResponse): void {
     "Access-Control-Allow-Headers",
     "Content-Type, Authorization, Access-Control-Request-Private-Network",
   );
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
   res.setHeader("Access-Control-Max-Age", "86400");
 
   // Chrome Private Network Access / local-network preflight (localhost:3000 → :8080)
@@ -165,18 +173,24 @@ export async function handleDashboardApi(
     return true;
   }
 
-  // POST /v1/auth/sign-up-internal — allowlisted global admin bootstrap
+  // POST /v1/auth/sign-up-internal — open signup (allowlisted emails become global_admin)
   if (req.method === "POST" && parts[0] === "auth" && parts[1] === "sign-up-internal") {
     try {
-      const body = (await readJsonBody(req)) as { email?: string; password?: string };
+      const body = (await readJsonBody(req)) as {
+        email?: string;
+        password?: string;
+        confirmPassword?: string;
+        passwordConfirm?: string;
+      };
       const email = String(body.email ?? "").trim();
       const password = String(body.password ?? "");
+      const confirmPassword = String(body.confirmPassword ?? body.passwordConfirm ?? "");
       if (!email || !password) {
         sendJson(res, 400, { error: "Email and password are required." });
         return true;
       }
-      if (!isGlobalAdminEmail(email)) {
-        sendJson(res, 403, { error: "This email is not allowed for internal signup." });
+      if (password !== confirmPassword) {
+        sendJson(res, 400, { error: "Passwords do not match." });
         return true;
       }
       if (password.length < 8) {
@@ -187,7 +201,13 @@ export async function handleDashboardApi(
         sendJson(res, 409, { error: "An account with this email already exists." });
         return true;
       }
-      const user = await createGlobalAdminUser(db, email, password);
+      const asAdmin = isGlobalAdminEmail(email);
+      const user = asAdmin
+        ? await createGlobalAdminUser(db, email, password)
+        : await createMemberUser(db, email, password);
+      if (!asAdmin) {
+        await createPersonalOrganizationForUser(db, user);
+      }
       const token = signAuthToken(user.id, user.email);
       sendJson(res, 201, {
         token,
@@ -336,10 +356,11 @@ export async function handleDashboardApi(
         sendJson(res, 401, { error: "Unauthorized" });
         return true;
       }
-      const organizations =
-        user.role === "global_admin"
-          ? await listOrganizations(db)
-          : await listOrganizationsForUser(db, user.id);
+      const organizations = await listOrganizationsWithAccess(
+        db,
+        user.id,
+        user.role === "global_admin",
+      );
       sendJson(res, 200, {
         user: { id: user.id, email: user.email, role: user.role },
         organizations,
@@ -400,6 +421,20 @@ export async function handleDashboardApi(
   async function requireOrgAccess(orgId: string): Promise<boolean> {
     if (isAdmin) return true;
     return isOrgMember(db, orgId, user!.id);
+  }
+
+  async function requireOrgOwner(orgId: string): Promise<boolean> {
+    if (isAdmin) return true;
+    return isOrgOwner(db, orgId, user!.id);
+  }
+
+  async function requireTab(orgId: string, tab: OrgTabKey): Promise<boolean> {
+    return userHasOrgTab(db, orgId, user!.id, tab, isAdmin);
+  }
+
+  async function requireProjectTab(projectOrgId: string | null, tab: OrgTabKey): Promise<boolean> {
+    if (!projectOrgId) return isAdmin;
+    return requireTab(projectOrgId, tab);
   }
 
   // GET /v1/waitlist — global admin inquiries
@@ -551,6 +586,10 @@ export async function handleDashboardApi(
       sendJson(res, 404, { error: "Organization not found." });
       return true;
     }
+    if (!(await requireTab(orgId, "users"))) {
+      sendJson(res, 403, { error: "Users tab permission required." });
+      return true;
+    }
     const members = await listOrgMembers(db, orgId);
     const pendingInvites = await listPendingInvites(db, orgId);
     sendJson(res, 200, {
@@ -565,6 +604,41 @@ export async function handleDashboardApi(
     return true;
   }
 
+  // PATCH /v1/organizations/:id/members/:userId
+  if (
+    req.method === "PATCH" &&
+    parts[0] === "organizations" &&
+    parts[2] === "members" &&
+    parts.length === 4
+  ) {
+    const orgId = parts[1]!;
+    const targetUserId = parts[3]!;
+    if (!(await requireOrgAccess(orgId))) {
+      sendJson(res, 404, { error: "Organization not found." });
+      return true;
+    }
+    if (!(await requireOrgOwner(orgId))) {
+      sendJson(res, 403, { error: "Organization owner required." });
+      return true;
+    }
+    const body = (await readJsonBody(req)) as { permissions?: Partial<OrgTabPermissions> };
+    if (!body.permissions || typeof body.permissions !== "object") {
+      sendJson(res, 400, { error: "permissions object is required." });
+      return true;
+    }
+    try {
+      const member = await updateMemberPermissions(db, orgId, targetUserId, body.permissions);
+      if (!member) {
+        sendJson(res, 404, { error: "Member not found." });
+        return true;
+      }
+      sendJson(res, 200, { member });
+    } catch (e) {
+      sendJson(res, 400, { error: e instanceof Error ? e.message : "Could not update permissions." });
+    }
+    return true;
+  }
+
   // POST /v1/organizations/:id/invites
   if (
     req.method === "POST" &&
@@ -575,6 +649,10 @@ export async function handleDashboardApi(
     const orgId = parts[1]!;
     if (!(await requireOrgAccess(orgId))) {
       sendJson(res, 404, { error: "Organization not found." });
+      return true;
+    }
+    if (!(await requireOrgOwner(orgId))) {
+      sendJson(res, 403, { error: "Organization owner required." });
       return true;
     }
     const org = await getOrganization(db, orgId);
@@ -615,6 +693,16 @@ export async function handleDashboardApi(
   // GET /v1/projects
   if (req.method === "GET" && parts[0] === "projects" && parts.length === 1) {
     const organizationId = parseQuery(req).get("organizationId") ?? undefined;
+    if (organizationId) {
+      if (!(await requireOrgAccess(organizationId))) {
+        sendJson(res, 403, { error: "Not a member of this organization." });
+        return true;
+      }
+      if (!(await requireTab(organizationId, "projects"))) {
+        sendJson(res, 403, { error: "Projects permission required." });
+        return true;
+      }
+    }
     const projects = await listProjectsForUser(db, user.id, isAdmin, organizationId || undefined);
     sendJson(res, 200, { projects });
     return true;
@@ -637,6 +725,10 @@ export async function handleDashboardApi(
       sendJson(res, 403, { error: "Not a member of this organization." });
       return true;
     }
+    if (!(await requireOrgOwner(organizationId))) {
+      sendJson(res, 403, { error: "Organization owner required to create projects." });
+      return true;
+    }
     const project = await createProject(db, user.id, name, organizationId);
     sendJson(res, 201, { project });
     return true;
@@ -647,6 +739,10 @@ export async function handleDashboardApi(
     const project = await getProjectForUser(db, parts[1]!, user.id, isAdmin);
     if (!project) {
       sendJson(res, 404, { error: "Project not found." });
+      return true;
+    }
+    if (!(await requireProjectTab(project.organization_id, "projects"))) {
+      sendJson(res, 403, { error: "Projects permission required." });
       return true;
     }
     sendJson(res, 200, { project });
@@ -660,6 +756,10 @@ export async function handleDashboardApi(
       sendJson(res, 404, { error: "Project not found." });
       return true;
     }
+    if (!(await requireProjectTab(project.organization_id, "app_settings"))) {
+      sendJson(res, 403, { error: "App settings permission required." });
+      return true;
+    }
     const keys = await listApiKeysForProject(db, project.id);
     sendJson(res, 200, { apiKeys: keys });
     return true;
@@ -670,6 +770,10 @@ export async function handleDashboardApi(
     const project = await getProjectForUser(db, parts[1]!, user.id, isAdmin);
     if (!project) {
       sendJson(res, 404, { error: "Project not found." });
+      return true;
+    }
+    if (!(await requireProjectTab(project.organization_id, "app_settings"))) {
+      sendJson(res, 403, { error: "App settings permission required." });
       return true;
     }
     const { fullKey, row } = await createApiKeyForProject(db, project.id);
@@ -689,6 +793,10 @@ export async function handleDashboardApi(
       sendJson(res, 404, { error: "Project not found." });
       return true;
     }
+    if (!(await requireProjectTab(project.organization_id, "app_settings"))) {
+      sendJson(res, 403, { error: "App settings permission required." });
+      return true;
+    }
     const ok = await revokeApiKey(db, project.id, parts[3]!);
     sendJson(res, ok ? 200 : 404, { ok });
     return true;
@@ -697,12 +805,21 @@ export async function handleDashboardApi(
   const projectId = parts[1]!;
   const project = await getProjectForUser(db, projectId, user.id, isAdmin);
 
-  // GET /v1/projects/:id/events
-  if (req.method === "GET" && parts[0] === "projects" && parts[2] === "events" && parts.length === 3) {
+  async function denyUnlessProjectTab(tab: OrgTabKey): Promise<boolean> {
     if (!project) {
       sendJson(res, 404, { error: "Project not found." });
       return true;
     }
+    if (!(await requireProjectTab(project.organization_id, tab))) {
+      sendJson(res, 403, { error: "Permission denied." });
+      return true;
+    }
+    return false;
+  }
+
+  // GET /v1/projects/:id/events
+  if (req.method === "GET" && parts[0] === "projects" && parts[2] === "events" && parts.length === 3) {
+    if (await denyUnlessProjectTab("events")) return true;
     const query = parseQuery(req);
     const pageSize = 50;
     const allowedAction = new Set(["record", "login", "conversion", "custom", "install"]);
@@ -712,13 +829,13 @@ export async function handleDashboardApi(
     const filter = {
       ...(actionType && allowedAction.has(actionType) ? { actionType } : {}),
       ...(eventLabel ? { eventLabel } : {}),
-      ...(token ? { tokenHash: tokenHashForLookup(project.company_id, token) } : {}),
+      ...(token ? { tokenHash: tokenHashForLookup(project!.company_id, token) } : {}),
     };
-    const total = await countSdkEvents(db, project.company_id, filter);
+    const total = await countSdkEvents(db, project!.company_id, filter);
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     const requested = Math.max(1, parseInt(query.get("page") ?? "1", 10) || 1);
     const page = Math.min(requested, totalPages);
-    const events = await listSdkEvents(db, project.company_id, {
+    const events = await listSdkEvents(db, project!.company_id, {
       ...filter,
       limit: pageSize,
       offset: (page - 1) * pageSize,
@@ -729,21 +846,15 @@ export async function handleDashboardApi(
 
   // GET /v1/projects/:id/links
   if (req.method === "GET" && parts[0] === "projects" && parts[2] === "links" && parts.length === 3) {
-    if (!project) {
-      sendJson(res, 404, { error: "Project not found." });
-      return true;
-    }
-    const links = await listTrackingLinks(db, project.company_id);
+    if (await denyUnlessProjectTab("links")) return true;
+    const links = await listTrackingLinks(db, project!.company_id);
     sendJson(res, 200, { links });
     return true;
   }
 
   // POST /v1/projects/:id/links
   if (req.method === "POST" && parts[0] === "projects" && parts[2] === "links" && parts.length === 3) {
-    if (!project) {
-      sendJson(res, 404, { error: "Project not found." });
-      return true;
-    }
+    if (await denyUnlessProjectTab("links")) return true;
     try {
       const body = (await readJsonBody(req)) as {
         name?: string;
@@ -763,7 +874,7 @@ export async function handleDashboardApi(
         return true;
       }
       const link = await createTrackingLink(db, {
-        companyId: project.company_id,
+        companyId: project!.company_id,
         name,
         slug,
         destinationType: "multi",
@@ -780,23 +891,17 @@ export async function handleDashboardApi(
 
   // DELETE /v1/projects/:id/links/:linkId
   if (req.method === "DELETE" && parts[0] === "projects" && parts[2] === "links" && parts.length === 4) {
-    if (!project) {
-      sendJson(res, 404, { error: "Project not found." });
-      return true;
-    }
-    const ok = await deleteTrackingLink(db, project.company_id, parts[3]!);
+    if (await denyUnlessProjectTab("links")) return true;
+    const ok = await deleteTrackingLink(db, project!.company_id, parts[3]!);
     sendJson(res, ok ? 200 : 404, { ok });
     return true;
   }
 
   // POST /v1/projects/:id/links/:linkId/presets
   if (req.method === "POST" && parts[0] === "projects" && parts[2] === "links" && parts[4] === "presets" && parts.length === 5) {
-    if (!project) {
-      sendJson(res, 404, { error: "Project not found." });
-      return true;
-    }
+    if (await denyUnlessProjectTab("links")) return true;
     const linkId = parts[3]!;
-    const link = await getTrackingLinkForCompany(db, project.company_id, linkId);
+    const link = await getTrackingLinkForCompany(db, project!.company_id, linkId);
     if (!link) {
       sendJson(res, 404, { error: "Link not found." });
       return true;
@@ -826,7 +931,7 @@ export async function handleDashboardApi(
       creativeId: body.creativeId?.trim() || undefined,
       deepLinkValue: body.deepLinkValue?.trim() || undefined,
     });
-    await updateTrackingLinkCampaignPresets(db, project.company_id, linkId, JSON.stringify(presets));
+    await updateTrackingLinkCampaignPresets(db, project!.company_id, linkId, JSON.stringify(presets));
     sendJson(res, 201, { ok: true });
     return true;
   }
@@ -839,41 +944,32 @@ export async function handleDashboardApi(
     parts[4] === "presets" &&
     parts.length === 6
   ) {
-    if (!project) {
-      sendJson(res, 404, { error: "Project not found." });
-      return true;
-    }
+    if (await denyUnlessProjectTab("links")) return true;
     const linkId = parts[3]!;
     const presetId = parts[5]!;
-    const link = await getTrackingLinkForCompany(db, project.company_id, linkId);
+    const link = await getTrackingLinkForCompany(db, project!.company_id, linkId);
     if (!link) {
       sendJson(res, 404, { error: "Link not found." });
       return true;
     }
     const presets = (link.campaign_presets_json ? JSON.parse(link.campaign_presets_json) : []) as { id: string }[];
     const next = presets.filter((p) => p.id !== presetId);
-    await updateTrackingLinkCampaignPresets(db, project.company_id, linkId, JSON.stringify(next));
+    await updateTrackingLinkCampaignPresets(db, project!.company_id, linkId, JSON.stringify(next));
     sendJson(res, 200, { ok: true });
     return true;
   }
 
   // GET /v1/projects/:id/settings
   if (req.method === "GET" && parts[0] === "projects" && parts[2] === "settings" && parts.length === 3) {
-    if (!project) {
-      sendJson(res, 404, { error: "Project not found." });
-      return true;
-    }
-    const settings = await getAttributionSettings(db, project.company_id);
-    sendJson(res, 200, { settings, companyId: project.company_id });
+    if (await denyUnlessProjectTab("app_settings")) return true;
+    const settings = await getAttributionSettings(db, project!.company_id);
+    sendJson(res, 200, { settings, companyId: project!.company_id });
     return true;
   }
 
   // PUT /v1/projects/:id/settings
   if (req.method === "PUT" && parts[0] === "projects" && parts[2] === "settings" && parts.length === 3) {
-    if (!project) {
-      sendJson(res, 404, { error: "Project not found." });
-      return true;
-    }
+    if (await denyUnlessProjectTab("app_settings")) return true;
     const body = (await readJsonBody(req)) as {
       iosAppId?: string;
       androidPackage?: string;
@@ -885,7 +981,7 @@ export async function handleDashboardApi(
       installAttributionWindowHours?: number;
       enableProbabilisticMatching?: boolean;
     };
-    await upsertAttributionSettings(db, project.company_id, {
+    await upsertAttributionSettings(db, project!.company_id, {
       iosAppId: body.iosAppId?.trim() || null,
       androidPackage: body.androidPackage?.trim() || null,
       iosTeamId: body.iosTeamId?.trim() || null,
@@ -902,37 +998,28 @@ export async function handleDashboardApi(
 
   // GET /v1/projects/:id/campaigns/summary
   if (req.method === "GET" && parts[0] === "projects" && parts[2] === "campaigns" && parts[3] === "summary" && parts.length === 4) {
-    if (!project) {
-      sendJson(res, 404, { error: "Project not found." });
-      return true;
-    }
+    if (await denyUnlessProjectTab("campaigns")) return true;
     const query = parseQuery(req);
-    const summary = await campaignSummary(db, project.company_id, query.get("from") ?? undefined, query.get("to") ?? undefined);
-    const organic = await organicVsNonOrganic(db, project.company_id);
+    const summary = await campaignSummary(db, project!.company_id, query.get("from") ?? undefined, query.get("to") ?? undefined);
+    const organic = await organicVsNonOrganic(db, project!.company_id);
     sendJson(res, 200, { summary, organic });
     return true;
   }
 
   // GET /v1/projects/:id/attribution/installs
   if (req.method === "GET" && parts[0] === "projects" && parts[2] === "attribution" && parts[3] === "installs" && parts.length === 4) {
-    if (!project) {
-      sendJson(res, 404, { error: "Project not found." });
-      return true;
-    }
+    if (await denyUnlessProjectTab("attribution")) return true;
     const limit = Math.min(200, Math.max(1, parseInt(parseQuery(req).get("limit") ?? "50", 10) || 50));
-    const installs = await listInstallAttributions(db, project.company_id, limit);
+    const installs = await listInstallAttributions(db, project!.company_id, limit);
     sendJson(res, 200, { installs });
     return true;
   }
 
   // GET /v1/projects/:id/skan/postbacks
   if (req.method === "GET" && parts[0] === "projects" && parts[2] === "skan" && parts[3] === "postbacks" && parts.length === 4) {
-    if (!project) {
-      sendJson(res, 404, { error: "Project not found." });
-      return true;
-    }
+    if (await denyUnlessProjectTab("skan")) return true;
     const limit = Math.min(200, Math.max(1, parseInt(parseQuery(req).get("limit") ?? "50", 10) || 50));
-    const postbacks = await listSkanPostbacks(db, project.company_id, limit);
+    const postbacks = await listSkanPostbacks(db, project!.company_id, limit);
     sendJson(res, 200, { postbacks });
     return true;
   }

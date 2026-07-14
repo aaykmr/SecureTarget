@@ -31,6 +31,43 @@ async function request<T>(
 
 export type UserRole = "global_admin" | "member";
 
+export type OrgTabKey =
+  | "projects"
+  | "users"
+  | "get_started"
+  | "campaigns"
+  | "attribution"
+  | "links"
+  | "events"
+  | "app_settings"
+  | "skan";
+
+export type OrgTabPermissions = Record<OrgTabKey, boolean>;
+
+export const ORG_TAB_KEYS: OrgTabKey[] = [
+  "projects",
+  "users",
+  "get_started",
+  "campaigns",
+  "attribution",
+  "links",
+  "events",
+  "app_settings",
+  "skan",
+];
+
+export const ORG_TAB_LABELS: Record<OrgTabKey, string> = {
+  projects: "Projects",
+  users: "Users",
+  get_started: "Get started",
+  campaigns: "Campaigns",
+  attribution: "Attribution",
+  links: "Links",
+  events: "Events",
+  app_settings: "App settings",
+  skan: "SKAN",
+};
+
 export type User = { id: string; email: string; role: UserRole };
 
 export type Organization = {
@@ -38,6 +75,8 @@ export type Organization = {
   name: string;
   created_by_user_id: string | null;
   created_at: string;
+  role?: "owner" | "member" | null;
+  permissions?: OrgTabPermissions;
 };
 
 export type OrgMember = {
@@ -46,6 +85,7 @@ export type OrgMember = {
   role: "owner" | "member";
   email: string;
   created_at: string;
+  permissions: OrgTabPermissions;
 };
 
 export type PendingInvite = {
@@ -156,10 +196,10 @@ export type AttributionSettings = {
 };
 
 export const api = {
-  signUpInternal(email: string, password: string) {
+  signUpInternal(email: string, password: string, confirmPassword: string) {
     return request<{ token: string; user: User }>("/v1/auth/sign-up-internal", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, confirmPassword }),
     });
   },
   acceptInvite(token: string, password: string, confirmPassword: string) {
@@ -239,6 +279,18 @@ export const api = {
       method: "POST",
       token,
       body: JSON.stringify({ email }),
+    });
+  },
+  updateMemberPermissions(
+    token: string,
+    orgId: string,
+    userId: string,
+    permissions: Partial<OrgTabPermissions>,
+  ) {
+    return request<{ member: OrgMember }>(`/v1/organizations/${orgId}/members/${userId}`, {
+      method: "PATCH",
+      token,
+      body: JSON.stringify({ permissions }),
     });
   },
   submitWaitlist(body: {

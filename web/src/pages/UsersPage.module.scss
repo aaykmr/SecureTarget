@@ -71,3 +71,67 @@
   color: var(--color-muted, #64748b);
   text-transform: capitalize;
 }
+
+.accordion {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.accordionItem {
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.accordionTrigger {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0.85rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-accent-interactive, #4f7cff) 8%, transparent);
+  }
+}
+
+.accordionPanel {
+  padding: 0 0.85rem 0.85rem;
+  border-top: 1px solid var(--color-border, #e2e8f0);
+}
+
+.hint {
+  margin: 0.65rem 0 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--color-muted, #64748b);
+}
+
+.permGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 0.45rem 0.75rem;
+  padding-top: 0.55rem;
+}
+
+.permItem {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+
+  input:disabled + span {
+    opacity: 0.7;
+  }
+}

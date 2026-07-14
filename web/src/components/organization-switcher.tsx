@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
-import { api, type Organization } from "@/api/client";
+import { api, ApiError, type Organization } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
 import { HugeIcon } from "@/components/huge-icon";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
 import styles from "./organization-switcher.module.scss";
 
 const PAGE_SIZE = 20;
 
 export function OrganizationSwitcher() {
-  const { token, currentOrganization, setCurrentOrganization } = useAuth();
+  const { token, currentOrganization, setCurrentOrganization, isGlobalAdmin, refreshMe } = useAuth();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -17,6 +20,9 @@ export function OrganizationSwitcher() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createPending, setCreatePending] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const searchId = useId();
@@ -86,10 +92,35 @@ export function OrganizationSwitcher() {
     }
   }
 
-  function selectOrg(org: Organization) {
+  async function selectOrg(org: Organization) {
     setCurrentOrganization(org);
     setOpen(false);
     setQuery("");
+    try {
+      await refreshMe();
+    } catch {
+      /* keep selection */
+    }
+  }
+
+  async function onCreate(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!token) return;
+    setCreatePending(true);
+    setCreateError(null);
+    const form = e.currentTarget;
+    const name = (form.elements.namedItem("name") as HTMLInputElement).value.trim();
+    try {
+      const { organization } = await api.createOrganization(token, name);
+      form.reset();
+      setCreateOpen(false);
+      setCurrentOrganization(organization);
+      await refreshMe();
+    } catch (err) {
+      setCreateError(err instanceof ApiError ? err.message : "Could not create organization.");
+    } finally {
+      setCreatePending(false);
+    }
   }
 
   return (
@@ -152,8 +183,30 @@ export function OrganizationSwitcher() {
             )}
             {loadingMore ? <p className={styles.empty}>Loading more…</p> : null}
           </div>
+          {isGlobalAdmin ? (
+            <button
+              type="button"
+              className={styles.addButton}
+              onClick={() => {
+                setOpen(false);
+                setCreateOpen(true);
+              }}
+            >
+              Add organization
+            </button>
+          ) : null}
         </div>
       ) : null}
+
+      <Modal title="New organization" open={createOpen} onClose={() => setCreateOpen(false)}>
+        <form onSubmit={onCreate} className={styles.modalForm}>
+          {createError ? <p className={styles.formError}>{createError}</p> : null}
+          <Input name="name" label="Name" required placeholder="Acme Inc" />
+          <Button type="submit" disabled={createPending} size="sm" fullWidth>
+            {createPending ? "Creating…" : "Create organization"}
+          </Button>
+        </form>
+      </Modal>
     </div>
   );
 }

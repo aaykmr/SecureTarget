@@ -7,10 +7,30 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { api, type Organization, type User } from "@/api/client";
+import {
+  api,
+  type Organization,
+  type OrgTabKey,
+  type OrgTabPermissions,
+  type Project,
+  type User,
+} from "@/api/client";
 
 const TOKEN_KEY = "st_auth_token";
 const ORG_KEY = "st_current_org_id";
+const PROJECT_KEY = "st_current_project_id";
+
+const FULL: OrgTabPermissions = {
+  projects: true,
+  users: true,
+  get_started: true,
+  campaigns: true,
+  attribution: true,
+  links: true,
+  events: true,
+  app_settings: true,
+  skan: true,
+};
 
 type AuthContextValue = {
   user: User | null;
@@ -19,9 +39,17 @@ type AuthContextValue = {
   currentOrganizationId: string | null;
   setCurrentOrganizationId: (orgId: string | null) => void;
   setCurrentOrganization: (org: Organization) => void;
+  projects: Project[];
+  currentProject: Project | null;
+  currentProjectId: string | null;
+  setCurrentProject: (project: Project | null) => void;
+  refreshProjects: () => Promise<void>;
   token: string | null;
   loading: boolean;
   isGlobalAdmin: boolean;
+  isOrgOwner: boolean;
+  currentOrgPermissions: OrgTabPermissions;
+  can: (tab: OrgTabKey) => boolean;
   login: (email: string, password: string) => Promise<void>;
   setSession: (token: string, user: User) => Promise<void>;
   refreshMe: () => Promise<void>;
@@ -39,11 +67,27 @@ function pickCurrentOrg(orgs: Organization[], preferredId: string | null): Organ
   return orgs[0] ?? null;
 }
 
+function pickCurrentProject(
+  projects: Project[],
+  preferredId: string | null,
+): Project | null {
+  if (!projects.length) return null;
+  if (preferredId) {
+    const match = projects.find((p) => p.id === preferredId);
+    if (match) return match;
+  }
+  return projects[0] ?? null;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [currentOrganizationId, setCurrentOrganizationIdState] = useState<string | null>(() =>
     localStorage.getItem(ORG_KEY),
+  );
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [currentProjectId, setCurrentProjectIdState] = useState<string | null>(() =>
+    localStorage.getItem(PROJECT_KEY),
   );
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
   const [loading, setLoading] = useState(true);
@@ -68,12 +112,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem(ORG_KEY);
     }
     setCurrentOrganizationIdState(orgId);
+    localStorage.removeItem(PROJECT_KEY);
+    setCurrentProjectIdState(null);
+    setProjects([]);
   }, []);
 
   const setCurrentOrganization = useCallback((org: Organization) => {
     localStorage.setItem(ORG_KEY, org.id);
     setCurrentOrganizationIdState(org.id);
     setOrganizations((prev) => (prev.some((o) => o.id === org.id) ? prev : [org, ...prev]));
+    localStorage.removeItem(PROJECT_KEY);
+    setCurrentProjectIdState(null);
+    setProjects([]);
+  }, []);
+
+  const setCurrentProject = useCallback((project: Project | null) => {
+    if (project) {
+      localStorage.setItem(PROJECT_KEY, project.id);
+      setCurrentProjectIdState(project.id);
+      setProjects((prev) => (prev.some((p) => p.id === project.id) ? prev : [project, ...prev]));
+    } else {
+      localStorage.removeItem(PROJECT_KEY);
+      setCurrentProjectIdState(null);
+    }
+  }, []);
+
+  const refreshProjects = useCallback(async () => {
+    const t = localStorage.getItem(TOKEN_KEY);
+    const orgId = localStorage.getItem(ORG_KEY);
+    if (!t || !orgId) {
+      setProjects([]);
+      return;
+    }
+    try {
+      const { projects: list } = await api.listProjects(t, orgId);
+      setProjects(list);
+      const preferred = localStorage.getItem(PROJECT_KEY);
+      const picked = pickCurrentProject(list, preferred);
+      if (picked) {
+        localStorage.setItem(PROJECT_KEY, picked.id);
+        setCurrentProjectIdState(picked.id);
+      } else {
+        localStorage.removeItem(PROJECT_KEY);
+        setCurrentProjectIdState(null);
+      }
+    } catch {
+      setProjects([]);
+    }
   }, []);
 
   const refreshMe = useCallback(async () => {
@@ -81,6 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!t) {
       setUser(null);
       setOrganizations([]);
+      setProjects([]);
       return;
     }
     const { user: u, organizations: orgs } = await api.me(t);
@@ -93,6 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       setUser(null);
       setOrganizations([]);
+      setProjects([]);
       return;
     }
     api
@@ -107,10 +194,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         setOrganizations([]);
         localStorage.removeItem(ORG_KEY);
+        localStorage.removeItem(PROJECT_KEY);
         setCurrentOrganizationIdState(null);
+        setCurrentProjectIdState(null);
+        setProjects([]);
       })
       .finally(() => setLoading(false));
   }, [token, applyOrganizations]);
+
+  useEffect(() => {
+    if (!token || !currentOrganizationId) {
+      setProjects([]);
+      return;
+    }
+    void refreshProjects();
+  }, [token, currentOrganizationId, refreshProjects]);
 
   const setSession = useCallback(
     async (t: string, u: User) => {
@@ -138,16 +236,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(ORG_KEY);
+    localStorage.removeItem(PROJECT_KEY);
     setToken(null);
     setUser(null);
     setOrganizations([]);
+    setProjects([]);
     setCurrentOrganizationIdState(null);
+    setCurrentProjectIdState(null);
   }, []);
 
   const currentOrganization = useMemo(() => {
     if (!currentOrganizationId) return organizations[0] ?? null;
     return organizations.find((o) => o.id === currentOrganizationId) ?? organizations[0] ?? null;
   }, [organizations, currentOrganizationId]);
+
+  const currentProject = useMemo(() => {
+    if (!currentProjectId) return projects[0] ?? null;
+    return projects.find((p) => p.id === currentProjectId) ?? projects[0] ?? null;
+  }, [projects, currentProjectId]);
+
+  const isGlobalAdmin = user?.role === "global_admin";
+  const isOrgOwner = isGlobalAdmin || currentOrganization?.role === "owner";
+
+  const currentOrgPermissions = useMemo(() => {
+    if (isGlobalAdmin) return FULL;
+    if (currentOrganization?.role === "owner") return FULL;
+    return currentOrganization?.permissions ?? FULL;
+  }, [isGlobalAdmin, currentOrganization]);
+
+  const can = useCallback(
+    (tab: OrgTabKey) => {
+      if (isGlobalAdmin) return true;
+      return Boolean(currentOrgPermissions[tab]);
+    },
+    [isGlobalAdmin, currentOrgPermissions],
+  );
 
   const value = useMemo(
     () => ({
@@ -157,9 +280,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       currentOrganizationId: currentOrganization?.id ?? null,
       setCurrentOrganizationId,
       setCurrentOrganization,
+      projects,
+      currentProject,
+      currentProjectId: currentProject?.id ?? null,
+      setCurrentProject,
+      refreshProjects,
       token,
       loading,
-      isGlobalAdmin: user?.role === "global_admin",
+      isGlobalAdmin,
+      isOrgOwner,
+      currentOrgPermissions,
+      can,
       login,
       setSession,
       refreshMe,
@@ -171,8 +302,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       currentOrganization,
       setCurrentOrganizationId,
       setCurrentOrganization,
+      projects,
+      currentProject,
+      setCurrentProject,
+      refreshProjects,
       token,
       loading,
+      isGlobalAdmin,
+      isOrgOwner,
+      currentOrgPermissions,
+      can,
       login,
       setSession,
       refreshMe,

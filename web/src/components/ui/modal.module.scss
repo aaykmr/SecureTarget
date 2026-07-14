@@ -1,0 +1,51 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: color-mix(in srgb, #0a0b10 55%, transparent);
+}
+
+.dialog {
+  width: min(24rem, 100%);
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-nav-border) 90%, transparent);
+  background: var(--color-surface-elevated, #1c1e26);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem 0.35rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+  color: var(--color-fg-default);
+}
+
+.close {
+  border: none;
+  background: transparent;
+  color: var(--color-fg-muted);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.15rem 0.35rem;
+
+  &:hover {
+    color: var(--color-fg-default);
+  }
+}
+
+.body {
+  padding: 0.5rem 1rem 1rem;
+}

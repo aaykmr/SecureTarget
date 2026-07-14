@@ -1,9 +1,10 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { RequireProjectTab, RequireTab } from "@/components/require-tab";
 import { AppSettingsPage } from "@/pages/AppSettingsPage";
 import { AttributionPage } from "@/pages/AttributionPage";
 import { CampaignsPage } from "@/pages/CampaignsPage";
+import { DashboardHomeRedirect } from "@/pages/DashboardHomeRedirect";
 import { DashboardLayout } from "@/pages/DashboardLayout";
-import { DashboardPage } from "@/pages/DashboardPage";
 import { EventsPage } from "@/pages/EventsPage";
 import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
 import { HomePage } from "@/pages/HomePage";
@@ -11,7 +12,6 @@ import { InquiriesPage } from "@/pages/InquiriesPage";
 import { InvitePage } from "@/pages/InvitePage";
 import { LinksPage } from "@/pages/LinksPage";
 import { LoginPage } from "@/pages/LoginPage";
-import { OrganizationsPage } from "@/pages/OrganizationsPage";
 import { PrivacyPage } from "@/pages/PrivacyPage";
 import { ProjectPage } from "@/pages/ProjectPage";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
@@ -33,17 +33,33 @@ export function App() {
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/dashboard" element={<DashboardLayout />}>
-        <Route index element={<DashboardPage />} />
-        <Route path="organizations" element={<OrganizationsPage />} />
+        <Route index element={<DashboardHomeRedirect />} />
+        <Route path="organizations" element={<Navigate to="/dashboard" replace />} />
         <Route path="inquiries" element={<InquiriesPage />} />
-        <Route path="users" element={<UsersPage />} />
-        <Route path=":projectId" element={<ProjectPage />} />
-        <Route path=":projectId/campaigns" element={<CampaignsPage />} />
-        <Route path=":projectId/attribution" element={<AttributionPage />} />
-        <Route path=":projectId/links" element={<LinksPage />} />
-        <Route path=":projectId/events" element={<EventsPage />} />
-        <Route path=":projectId/skan" element={<SkanPage />} />
-        <Route path=":projectId/settings/apps" element={<AppSettingsPage />} />
+        <Route element={<RequireTab tab="users" />}>
+          <Route path="users" element={<UsersPage />} />
+        </Route>
+        <Route element={<RequireProjectTab tab="get_started" />}>
+          <Route path=":projectId" element={<ProjectPage />} />
+        </Route>
+        <Route element={<RequireProjectTab tab="campaigns" />}>
+          <Route path=":projectId/campaigns" element={<CampaignsPage />} />
+        </Route>
+        <Route element={<RequireProjectTab tab="attribution" />}>
+          <Route path=":projectId/attribution" element={<AttributionPage />} />
+        </Route>
+        <Route element={<RequireProjectTab tab="links" />}>
+          <Route path=":projectId/links" element={<LinksPage />} />
+        </Route>
+        <Route element={<RequireProjectTab tab="events" />}>
+          <Route path=":projectId/events" element={<EventsPage />} />
+        </Route>
+        <Route element={<RequireProjectTab tab="skan" />}>
+          <Route path=":projectId/skan" element={<SkanPage />} />
+        </Route>
+        <Route element={<RequireProjectTab tab="app_settings" />}>
+          <Route path=":projectId/settings/apps" element={<AppSettingsPage />} />
+        </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

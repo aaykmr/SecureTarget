@@ -89,6 +89,7 @@ CREATE TABLE IF NOT EXISTS organization_members (
   organization_id TEXT NOT NULL,
   user_id TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'member',
+  permissions TEXT NOT NULL DEFAULT '{"projects":true,"users":true,"get_started":true,"campaigns":true,"attribution":true,"links":true,"events":true,"app_settings":true,"skan":true}',
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (organization_id, user_id),
   FOREIGN KEY(organization_id) REFERENCES organizations(id) ON DELETE CASCADE,

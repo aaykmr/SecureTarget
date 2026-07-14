@@ -36,7 +36,7 @@ export function RegisterForm({ mode = "internal" }: { mode?: Mode }) {
     }
     setPending(true);
     try {
-      const { token, user } = await api.signUpInternal(email, password);
+      const { token, user } = await api.signUpInternal(email, password, passwordConfirm);
       await setSession(token, user);
       navigate("/dashboard");
     } catch (err) {
@@ -68,7 +68,7 @@ export function RegisterForm({ mode = "internal" }: { mode?: Mode }) {
           autoComplete="new-password"
         />
         <Button type="submit" disabled={pending} variant="primary" fullWidth>
-          {pending ? "Creating account…" : "Create admin account"}
+          {pending ? "Creating account…" : "Create account"}
         </Button>
       </form>
     </Card>

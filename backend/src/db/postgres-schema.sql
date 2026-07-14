@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS organization_members (
   organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   role TEXT NOT NULL DEFAULT 'member',
+  permissions JSONB NOT NULL DEFAULT '{"projects":true,"users":true,"get_started":true,"campaigns":true,"attribution":true,"links":true,"events":true,"app_settings":true,"skan":true}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (organization_id, user_id)
 );

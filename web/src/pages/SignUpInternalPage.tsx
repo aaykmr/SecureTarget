@@ -15,8 +15,8 @@ export function SignUpInternalPage() {
         EventIQN
       </Link>
       <div className={styles.intro}>
-        <h1 className={styles.title}>Internal signup</h1>
-        <p className={styles.subtitle}>Allowlisted global admin bootstrap only.</p>
+        <h1 className={styles.title}>Create account</h1>
+        <p className={styles.subtitle}>Sign up with email and password to start using EventIQN.</p>
       </div>
       <RegisterForm mode="internal" />
       <p className={styles.footer}>

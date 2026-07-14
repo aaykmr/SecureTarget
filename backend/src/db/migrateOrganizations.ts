@@ -25,11 +25,33 @@ export async function migrateOrganizationsSchema(db: pg.Pool): Promise<void> {
       organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       role TEXT NOT NULL DEFAULT 'member',
+      permissions JSONB NOT NULL DEFAULT '{"projects":true,"users":true,"get_started":true,"campaigns":true,"attribution":true,"links":true,"events":true,"app_settings":true,"skan":true}'::jsonb,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       PRIMARY KEY (organization_id, user_id)
     )
   `);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_org_members_user ON organization_members(user_id)`);
+
+  const fullPermsJson = JSON.stringify({
+    projects: true,
+    users: true,
+    get_started: true,
+    campaigns: true,
+    attribution: true,
+    links: true,
+    events: true,
+    app_settings: true,
+    skan: true,
+  });
+  await db.query(`ALTER TABLE organization_members ADD COLUMN IF NOT EXISTS permissions JSONB`);
+  await db.query(
+    `UPDATE organization_members SET permissions = $1::jsonb WHERE permissions IS NULL`,
+    [fullPermsJson],
+  );
+  await db.query(
+    `ALTER TABLE organization_members ALTER COLUMN permissions SET DEFAULT '${fullPermsJson.replace(/'/g, "''")}'::jsonb`,
+  );
+  await db.query(`ALTER TABLE organization_members ALTER COLUMN permissions SET NOT NULL`);
 
   await db.query(`
     CREATE TABLE IF NOT EXISTS invites (
@@ -63,10 +85,24 @@ export async function migrateOrganizationsSchema(db: pg.Pool): Promise<void> {
       [orgId, project.name, project.user_id],
     );
     await db.query(
-      `INSERT INTO organization_members (organization_id, user_id, role)
-       VALUES ($1, $2, 'owner')
+      `INSERT INTO organization_members (organization_id, user_id, role, permissions)
+       VALUES ($1, $2, 'owner', $3::jsonb)
        ON CONFLICT DO NOTHING`,
-      [orgId, project.user_id],
+      [
+        orgId,
+        project.user_id,
+        JSON.stringify({
+          projects: true,
+          users: true,
+          get_started: true,
+          campaigns: true,
+          attribution: true,
+          links: true,
+          events: true,
+          app_settings: true,
+          skan: true,
+        }),
+      ],
     );
     await db.query(`UPDATE projects SET organization_id = $1 WHERE id = $2`, [orgId, project.id]);
   }
