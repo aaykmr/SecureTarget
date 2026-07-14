@@ -22,6 +22,8 @@ export function getPostgresPool(): pg.Pool {
 export async function initPostgresSchema(): Promise<void> {
   const sql = readFileSync(resolve(__dirname, "postgres-schema.sql"), "utf8");
   const db = getPostgresPool();
+  // Apply CREATE TABLE IF NOT EXISTS first (fresh installs), then run ALTERs for
+  // existing production DBs. Indexes that depend on added columns live in the migration.
   await db.query(sql);
   await migrateOrganizationsSchema(db);
 }

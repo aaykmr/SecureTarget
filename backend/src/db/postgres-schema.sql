@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS projects (
 );
 
 CREATE INDEX IF NOT EXISTS idx_projects_user ON projects(user_id);
-CREATE INDEX IF NOT EXISTS idx_projects_org ON projects(organization_id);
+-- idx_projects_org is created in migrateOrganizationsSchema after ADD COLUMN on existing DBs
 
 CREATE TABLE IF NOT EXISTS waitlist_inquiries (
   id TEXT PRIMARY KEY,

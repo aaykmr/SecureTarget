@@ -47,6 +47,7 @@ export async function migrateOrganizationsSchema(db: pg.Pool): Promise<void> {
   await db.query(`CREATE INDEX IF NOT EXISTS idx_invites_email ON invites(email)`);
 
   await db.query(`ALTER TABLE projects ADD COLUMN IF NOT EXISTS organization_id TEXT`);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_projects_org ON projects(organization_id)`);
 
   // Backfill: one org per legacy project without organization_id
   const { rows: orphans } = await db.query<{
