@@ -33,10 +33,11 @@ const PROJECT_NAV: { segment: string; label: string; tab: OrgTabKey; icon: IconS
 
 export function DashboardSidebar({ email }: { email: string }) {
   const { pathname } = useLocation();
-  const { isGlobalAdmin, can, currentProjectId } = useAuth();
+  const { isGlobalAdmin, can, currentProjectId, projects } = useAuth();
   const usersActive = pathname.startsWith("/dashboard/users");
   const inquiriesActive = pathname.startsWith("/dashboard/inquiries");
   const displayName = email.split("@")[0] || "Account";
+  const hasProjects = projects.length > 0;
 
   function navHref(navSegment: string): string {
     if (!currentProjectId) return "/dashboard";
@@ -80,20 +81,22 @@ export function DashboardSidebar({ email }: { email: string }) {
             <span>Inquiries</span>
           </Link>
         ) : null}
-        {PROJECT_NAV.filter((item) => can(item.tab)).map((item) => (
-          <Link
-            key={item.segment || "overview"}
-            to={navHref(item.segment)}
-            className={clsx(styles.navLink, isActive(item.segment) && styles.navLinkActive)}
-            aria-disabled={!currentProjectId}
-            onClick={(e) => {
-              if (!currentProjectId) e.preventDefault();
-            }}
-          >
-            <HugeIcon icon={item.icon} size={18} className={styles.navIcon} />
-            <span>{item.label}</span>
-          </Link>
-        ))}
+        {hasProjects
+          ? PROJECT_NAV.filter((item) => can(item.tab)).map((item) => (
+              <Link
+                key={item.segment || "overview"}
+                to={navHref(item.segment)}
+                className={clsx(styles.navLink, isActive(item.segment) && styles.navLinkActive)}
+                aria-disabled={!currentProjectId}
+                onClick={(e) => {
+                  if (!currentProjectId) e.preventDefault();
+                }}
+              >
+                <HugeIcon icon={item.icon} size={18} className={styles.navIcon} />
+                <span>{item.label}</span>
+              </Link>
+            ))
+          : null}
       </nav>
 
       <div className={styles.footer}>

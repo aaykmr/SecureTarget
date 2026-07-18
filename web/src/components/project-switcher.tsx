@@ -1,12 +1,10 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
-import { api, ApiError, type Project } from "@/api/client";
+import { type Project } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
 import { HugeIcon } from "@/components/huge-icon";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Modal } from "@/components/ui/modal";
+import { CreateProjectModal } from "@/components/create-project-modal";
 import styles from "./organization-switcher.module.scss";
 
 const RESERVED = new Set(["organizations", "users", "inquiries"]);
@@ -22,19 +20,15 @@ export function ProjectSwitcher() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const {
-    token,
     can,
     isOrgOwner,
     currentOrganization,
     projects,
     currentProject,
     setCurrentProject,
-    refreshProjects,
   } = useAuth();
   const [open, setOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
-  const [createPending, setCreatePending] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const listId = useId();
 
@@ -64,27 +58,6 @@ export function ProjectSwitcher() {
     setCurrentProject(project);
     setOpen(false);
     navigate(segment ? `/dashboard/${project.id}/${segment}` : `/dashboard/${project.id}`);
-  }
-
-  async function onCreate(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!token || !currentOrganization) return;
-    setCreatePending(true);
-    setCreateError(null);
-    const form = e.currentTarget;
-    const name = (form.elements.namedItem("name") as HTMLInputElement).value.trim();
-    try {
-      const { project } = await api.createProject(token, name, currentOrganization.id);
-      form.reset();
-      setCreateOpen(false);
-      await refreshProjects();
-      setCurrentProject(project);
-      navigate(`/dashboard/${project.id}`);
-    } catch (err) {
-      setCreateError(err instanceof ApiError ? err.message : "Could not create project.");
-    } finally {
-      setCreatePending(false);
-    }
   }
 
   return (
@@ -142,20 +115,7 @@ export function ProjectSwitcher() {
         </div>
       ) : null}
 
-      <Modal title="New project" open={createOpen} onClose={() => setCreateOpen(false)}>
-        <form onSubmit={onCreate} className={styles.modalForm}>
-          {createError ? <p className={styles.formError}>{createError}</p> : null}
-          {currentOrganization ? (
-            <p className={styles.empty} style={{ paddingTop: 0 }}>
-              Organization: <strong>{currentOrganization.name}</strong>
-            </p>
-          ) : null}
-          <Input name="name" label="Name" required placeholder="My app" />
-          <Button type="submit" disabled={createPending || !currentOrganization} size="sm" fullWidth>
-            {createPending ? "Creating…" : "Create project"}
-          </Button>
-        </form>
-      </Modal>
+      <CreateProjectModal open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
   );
 }
