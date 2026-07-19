@@ -6,6 +6,7 @@ import { DataTable, DataTableEmpty } from "@/components/dashboard/data-table";
 import { DashboardPageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import styles from "./EventsPage.module.scss";
 
@@ -20,6 +21,14 @@ function payloadLabel(payloadJson: string): string {
   return "—";
 }
 
+function prettyPayload(payloadJson: string): string {
+  try {
+    return JSON.stringify(JSON.parse(payloadJson), null, 2);
+  } catch {
+    return payloadJson;
+  }
+}
+
 export function EventsPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { token } = useAuth();
@@ -32,6 +41,7 @@ export function EventsPage() {
   const [actionType, setActionType] = useState(searchParams.get("actionType") ?? "");
   const [eventLabel, setEventLabel] = useState(searchParams.get("event") ?? "");
   const [tokenFilter, setTokenFilter] = useState(searchParams.get("token") ?? "");
+  const [selected, setSelected] = useState<SdkEvent | null>(null);
 
   const load = useCallback(async () => {
     if (!token || !projectId) return;
@@ -113,26 +123,52 @@ export function EventsPage() {
             <th>Time</th>
             <th>Action</th>
             <th>Event</th>
-            <th>Token hash</th>
           </tr>
         </thead>
         <tbody>
           {events.length === 0 ? (
-            <DataTableEmpty colSpan={4}>No events match your filters.</DataTableEmpty>
+            <DataTableEmpty colSpan={3}>No events match your filters.</DataTableEmpty>
           ) : (
             events.map((row) => (
-              <tr key={row.id}>
+              <tr
+                key={row.id}
+                className={styles.clickableRow}
+                onClick={() => setSelected(row)}
+                tabIndex={0}
+                role="button"
+                aria-label="View event details"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelected(row);
+                  }
+                }}
+              >
                 <td>{new Date(row.created_at).toLocaleString()}</td>
                 <td>{row.event_type}</td>
                 <td>{payloadLabel(row.payload_json)}</td>
-                <td>
-                  <code>{row.token_hash ? `${row.token_hash.slice(0, 12)}…` : "—"}</code>
-                </td>
               </tr>
             ))
           )}
         </tbody>
       </DataTable>
+
+      <Modal title="Event details" open={selected !== null} onClose={() => setSelected(null)}>
+        {selected ? (
+          <div className={styles.detail}>
+            <dl className={styles.detailGrid}>
+              <dt>Time</dt>
+              <dd>{new Date(selected.created_at).toLocaleString()}</dd>
+              <dt>Action</dt>
+              <dd>{selected.event_type}</dd>
+              <dt>Event</dt>
+              <dd>{payloadLabel(selected.payload_json)}</dd>
+            </dl>
+            <p className={styles.detailLabel}>Payload</p>
+            <pre className={styles.payload}>{prettyPayload(selected.payload_json)}</pre>
+          </div>
+        ) : null}
+      </Modal>
 
       <div className={styles.pagination}>
         {page > 1 ? (

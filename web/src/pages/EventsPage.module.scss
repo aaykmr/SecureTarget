@@ -23,3 +23,67 @@
   gap: var(--space-6);
   font-size: var(--text-body-sm);
 }
+
+.clickableRow {
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-accent-interactive) 8%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--color-accent-interactive) 60%, transparent);
+    outline-offset: -2px;
+  }
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0;
+
+  dt {
+    font-size: var(--text-caption-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-fg-subtle);
+  }
+
+  dd {
+    margin: 0;
+    font-size: var(--text-body-sm);
+    color: var(--color-fg-default);
+  }
+}
+
+.detailLabel {
+  margin: 0;
+  font-size: var(--text-caption-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-fg-subtle);
+}
+
+.payload {
+  margin: 0;
+  max-height: 18rem;
+  overflow: auto;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-canvas) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-nav-border) 90%, transparent);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: var(--text-caption);
+  line-height: 1.5;
+  color: var(--color-fg-default);
+  white-space: pre-wrap;
+  word-break: break-word;
+}

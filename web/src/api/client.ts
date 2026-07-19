@@ -152,6 +152,8 @@ export type CampaignSummaryRow = {
   campaign_id: string | null;
   adgroup_id: string | null;
   creative_id: string | null;
+  channel: string | null;
+  clicks: number;
   installs: number;
   conversions: number;
   revenue: number;

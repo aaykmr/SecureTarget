@@ -42,7 +42,10 @@ export function CampaignsPage() {
         eyebrow="Analytics"
         title="Campaign performance"
         description={
-          <p>Installs and conversions grouped by media source and campaign from attributed install events.</p>
+          <p>
+            Clicks, installs, conversions and revenue grouped by media source and campaign across web and app
+            channels, with AppsFlyer-style metrics (CVR, eCPI, ARPU).
+          </p>
         }
       />
 
@@ -67,34 +70,49 @@ export function CampaignsPage() {
         <thead>
           <tr>
             <th>Media source</th>
+            <th>Channel</th>
             <th>Campaign</th>
             <th>Ad group</th>
             <th>Creative</th>
+            <th>Clicks</th>
             <th>Installs</th>
+            <th>CVR</th>
             <th>Conversions</th>
             <th>Revenue</th>
             <th>Cost</th>
+            <th>eCPI</th>
+            <th>ARPU</th>
           </tr>
         </thead>
         <tbody>
           {summary.length === 0 ? (
-            <DataTableEmpty colSpan={8}>
-              No attributed campaigns yet. Create a{" "}
-              <Link to={`/dashboard/${projectId}/links`}>tracking link</Link> and send install events from your SDK.
+            <DataTableEmpty colSpan={13}>
+              No campaign activity yet. Create a{" "}
+              <Link to={`/dashboard/${projectId}/links`}>tracking link</Link> and drive clicks or install events.
             </DataTableEmpty>
           ) : (
-            summary.map((row, i) => (
-              <tr key={i}>
-                <td>{row.media_source ?? "—"}</td>
-                <td>{row.campaign_id ?? "—"}</td>
-                <td>{row.adgroup_id ?? "—"}</td>
-                <td>{row.creative_id ?? "—"}</td>
-                <td>{row.installs}</td>
-                <td>{row.conversions}</td>
-                <td>{Number(row.revenue).toFixed(2)}</td>
-                <td>{Number(row.cost).toFixed(2)}</td>
-              </tr>
-            ))
+            summary.map((row, i) => {
+              const cvr = row.clicks > 0 ? (row.installs / row.clicks) * 100 : null;
+              const ecpi = row.installs > 0 ? row.cost / row.installs : null;
+              const arpu = row.installs > 0 ? row.revenue / row.installs : null;
+              return (
+                <tr key={i}>
+                  <td>{row.media_source ?? "—"}</td>
+                  <td>{row.channel ?? "—"}</td>
+                  <td>{row.campaign_id ?? "—"}</td>
+                  <td>{row.adgroup_id ?? "—"}</td>
+                  <td>{row.creative_id ?? "—"}</td>
+                  <td>{row.clicks}</td>
+                  <td>{row.installs}</td>
+                  <td>{cvr === null ? "—" : `${cvr.toFixed(1)}%`}</td>
+                  <td>{row.conversions}</td>
+                  <td>{Number(row.revenue).toFixed(2)}</td>
+                  <td>{Number(row.cost).toFixed(2)}</td>
+                  <td>{ecpi === null ? "—" : ecpi.toFixed(2)}</td>
+                  <td>{arpu === null ? "—" : arpu.toFixed(2)}</td>
+                </tr>
+              );
+            })
           )}
         </tbody>
       </DataTable>
