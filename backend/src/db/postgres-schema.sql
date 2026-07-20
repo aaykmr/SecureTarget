@@ -187,7 +187,8 @@ CREATE TABLE IF NOT EXISTS tracking_links (
   UNIQUE (company_id, slug)
 );
 
-CREATE INDEX IF NOT EXISTS idx_tracking_links_type ON tracking_links(company_id, link_type);
+-- idx_tracking_links_type is created in migrateTrackingLinksSchema after ADD COLUMN
+-- so existing DBs (CREATE TABLE IF NOT EXISTS no-op) do not fail on missing link_type.
 
 CREATE TABLE IF NOT EXISTS project_attribution_settings (
   company_id TEXT PRIMARY KEY,
