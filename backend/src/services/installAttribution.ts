@@ -6,6 +6,7 @@ import { hashToken, tokenSaltForCompany } from "@eventiqn/shared";
 import { getIdentityForSession } from "./deviceIdentity.js";
 import { runMatchRules, type MatchCandidate } from "./matchRules.js";
 import { markPendingClickMatched } from "../routes/clickRedirect.js";
+import { markImpressionMatched } from "../routes/impressionPixel.js";
 import { getAttributionSettings } from "./trackingLinks.js";
 import { storeClick } from "./attribution.js";
 import { checkFraudFlags, sendPartnerPostback } from "./partnerPostbacks.js";
@@ -126,6 +127,7 @@ export async function resolveInstallAttribution(
       enableProbabilistic: settings.enableProbabilisticMatching,
       minConfidence: settings.probabilisticMinConfidence,
       windowHours: settings.installAttributionWindowHours,
+      viewThroughWindowHours: settings.viewThroughAttributionWindowHours,
     },
     tokenHash,
   );
@@ -163,7 +165,9 @@ export async function resolveInstallAttribution(
       await storeClick(customerDb, pendingClickToRecordEvent(candidate.pendingClick, event.companyId, event.token));
     }
     clickEventId = candidate.pendingClick.click_id;
-    if (identity?.identityId) {
+    if (candidate.attributionPath === "vta" && candidate.impressionId) {
+      await markImpressionMatched(deviceDb, candidate.impressionId);
+    } else if (identity?.identityId) {
       await markPendingClickMatched(deviceDb, candidate.pendingClick.click_id, identity.identityId);
     }
   }
@@ -172,14 +176,15 @@ export async function resolveInstallAttribution(
     return { attributed: false, isOrganic: true, confidence: 0 };
   }
 
+  const attributionPath = candidate.attributionPath ?? (candidate.ruleName === "vta_impression" ? "vta" : "cta");
   const attrId = crypto.randomUUID();
   if (isPgConn(customerDb)) {
     await pgExecute(
       customerDb,
       `INSERT INTO attribution_events
         (id, company_id, token_hash, click_event_id, conversion_event_id, attributed_at,
-         attribution_window_hours, reengagement_window_hours, confidence, match_rule, is_organic)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+         attribution_window_hours, reengagement_window_hours, confidence, match_rule, is_organic, attribution_path)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
       [
         attrId,
         event.companyId,
@@ -187,11 +192,14 @@ export async function resolveInstallAttribution(
         clickEventId,
         event.eventId,
         event.occurredAt,
-        settings.installAttributionWindowHours,
+        attributionPath === "vta"
+          ? settings.viewThroughAttributionWindowHours
+          : settings.installAttributionWindowHours,
         null,
         candidate.confidence,
         candidate.ruleName,
         false,
+        attributionPath,
       ],
     );
   } else {
@@ -199,8 +207,8 @@ export async function resolveInstallAttribution(
       .prepare(
         `INSERT INTO attribution_events
           (id, company_id, token_hash, click_event_id, conversion_event_id, attributed_at,
-           attribution_window_hours, reengagement_window_hours, confidence, match_rule, is_organic)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           attribution_window_hours, reengagement_window_hours, confidence, match_rule, is_organic, attribution_path)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         attrId,
@@ -209,11 +217,14 @@ export async function resolveInstallAttribution(
         clickEventId,
         event.eventId,
         event.occurredAt,
-        settings.installAttributionWindowHours,
+        attributionPath === "vta"
+          ? settings.viewThroughAttributionWindowHours
+          : settings.installAttributionWindowHours,
         null,
         candidate.confidence,
         candidate.ruleName,
         0,
+        attributionPath,
       );
   }
 

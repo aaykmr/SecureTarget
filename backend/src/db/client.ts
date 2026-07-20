@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { migrateTrackingLinksSqlite } from "./migrateTrackingLinks.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -91,5 +92,6 @@ export function createDb(dbPath = "eventiqn.sqlite"): Database.Database {
   migrateClientSessionsPrivacy(db);
   migrateAttributionExtensions(db);
   migrateInstallAttributionTables(db);
+  migrateTrackingLinksSqlite(db);
   return db;
 }

@@ -9,6 +9,8 @@ export interface MatchCandidate {
   clickId?: string;
   clickEventId?: string;
   pendingClick?: PendingClickRow;
+  impressionId?: string;
+  attributionPath?: "cta" | "vta";
   ruleName: string;
   confidence: number;
   mediaSource?: string | null;
@@ -31,7 +33,24 @@ export interface MatchInput {
   enableProbabilistic: boolean;
   minConfidence: number;
   windowHours: number;
+  viewThroughWindowHours?: number;
 }
+
+export type LinkImpressionRow = {
+  id: string;
+  company_id: string;
+  link_id: string | null;
+  impression_id: string;
+  media_source: string | null;
+  campaign_id: string | null;
+  adgroup_id: string | null;
+  creative_id: string | null;
+  channel: string | null;
+  viewed_at: string;
+  expires_at: string;
+  matched_at: string | null;
+  metadata_json: string | null;
+};
 
 export async function matchByClickId(
   deviceDb: Database | pg.Pool,
@@ -53,6 +72,7 @@ export async function matchByClickId(
   return {
     clickId,
     pendingClick: pending,
+    attributionPath: "cta",
     ruleName: "click_id_exact",
     confidence: 1.0,
     mediaSource: pending.media_source,
@@ -320,6 +340,78 @@ export function resolveClickIdFromSignals(input: MatchInput): string | null {
   return null;
 }
 
+export async function matchByImpression(
+  deviceDb: Database | pg.Pool,
+  companyId: string,
+  windowHours: number,
+  occurredAt: string,
+): Promise<MatchCandidate | null> {
+  const lowerBound = new Date(Date.parse(occurredAt) - windowHours * 3600 * 1000).toISOString();
+  let impression: LinkImpressionRow | undefined;
+  if (isPgConn(deviceDb)) {
+    impression = await pgQueryOne<LinkImpressionRow>(
+      deviceDb,
+      `SELECT * FROM link_impressions
+       WHERE company_id = $1 AND matched_at IS NULL
+         AND viewed_at >= $2 AND viewed_at <= $3
+         AND expires_at >= $3
+       ORDER BY viewed_at DESC
+       LIMIT 1`,
+      [companyId, lowerBound, occurredAt],
+    );
+  } else {
+    impression = deviceDb
+      .prepare(
+        `SELECT * FROM link_impressions
+         WHERE company_id = ? AND matched_at IS NULL
+           AND viewed_at >= ? AND viewed_at <= ?
+           AND expires_at >= ?
+         ORDER BY viewed_at DESC
+         LIMIT 1`,
+      )
+      .get(companyId, lowerBound, occurredAt, occurredAt) as LinkImpressionRow | undefined;
+  }
+  if (!impression) return null;
+  return {
+    impressionId: impression.impression_id,
+    clickId: impression.impression_id,
+    attributionPath: "vta",
+    ruleName: "vta_impression",
+    confidence: 0.7,
+    mediaSource: impression.media_source,
+    campaignId: impression.campaign_id,
+    adgroupId: impression.adgroup_id,
+    creativeId: impression.creative_id,
+    channel: impression.channel,
+    inputs: { impressionId: impression.impression_id, viewedAt: impression.viewed_at },
+    // Synthetic pending-click shape for materializing click_events
+    pendingClick: {
+      click_id: impression.impression_id,
+      company_id: impression.company_id,
+      link_id: impression.link_id,
+      media_source: impression.media_source,
+      campaign_id: impression.campaign_id,
+      adgroup_id: impression.adgroup_id,
+      creative_id: impression.creative_id,
+      channel: impression.channel,
+      deep_link_value: null,
+      ip: null,
+      user_agent: null,
+      platform_hint: null,
+      clicked_at: impression.viewed_at,
+      expires_at: impression.expires_at,
+      matched_identity_id: null,
+      matched_at: null,
+      gaid: null,
+      idfa: null,
+      metadata_json: JSON.stringify({
+        ...(impression.metadata_json ? JSON.parse(impression.metadata_json) : {}),
+        source: "vta_impression",
+      }),
+    },
+  };
+}
+
 export async function runMatchRules(
   customerDb: Database | pg.Pool,
   deviceDb: Database | pg.Pool,
@@ -333,7 +425,7 @@ export async function runMatchRules(
   }
 
   const adMatch = await matchByAdvertisingId(deviceDb, input.companyId, input.sessionId, input.windowHours, input.occurredAt);
-  if (adMatch) return adMatch;
+  if (adMatch) return { ...adMatch, attributionPath: adMatch.attributionPath ?? "cta" };
 
   const sessionMatch = await matchBySessionRecord(
     customerDb,
@@ -342,10 +434,14 @@ export async function runMatchRules(
     input.windowHours,
     input.occurredAt,
   );
-  if (sessionMatch) return sessionMatch;
+  if (sessionMatch) return { ...sessionMatch, attributionPath: sessionMatch.attributionPath ?? "cta" };
+
+  const vtaWindow = input.viewThroughWindowHours ?? input.windowHours;
+  const vtaMatch = await matchByImpression(deviceDb, input.companyId, vtaWindow, input.occurredAt);
+  if (vtaMatch) return vtaMatch;
 
   if (input.enableProbabilistic) {
-    return matchProbabilistic(
+    const prob = await matchProbabilistic(
       deviceDb,
       input.companyId,
       input.sessionId,
@@ -353,6 +449,7 @@ export async function runMatchRules(
       input.occurredAt,
       input.minConfidence,
     );
+    if (prob) return { ...prob, attributionPath: "cta" };
   }
 
   return null;

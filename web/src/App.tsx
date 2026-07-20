@@ -10,7 +10,8 @@ import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
 import { HomePage } from "@/pages/HomePage";
 import { InquiriesPage } from "@/pages/InquiriesPage";
 import { InvitePage } from "@/pages/InvitePage";
-import { LinksPage } from "@/pages/LinksPage";
+import { LinksIndexRedirect, LinksLayout } from "@/pages/LinksLayout";
+import { TypedLinkTypePage } from "@/pages/TypedLinkTypePage";
 import { LoginPage } from "@/pages/LoginPage";
 import { PrivacyPage } from "@/pages/PrivacyPage";
 import { ProjectPage } from "@/pages/ProjectPage";
@@ -49,7 +50,10 @@ export function App() {
           <Route path=":projectId/attribution" element={<AttributionPage />} />
         </Route>
         <Route element={<RequireProjectTab tab="links" />}>
-          <Route path=":projectId/links" element={<LinksPage />} />
+          <Route path=":projectId/links" element={<LinksLayout />}>
+            <Route index element={<LinksIndexRedirect />} />
+            <Route path=":linkTypeSegment" element={<TypedLinkTypePage />} />
+          </Route>
         </Route>
         <Route element={<RequireProjectTab tab="events" />}>
           <Route path=":projectId/events" element={<EventsPage />} />

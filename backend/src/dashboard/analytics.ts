@@ -22,8 +22,12 @@ export type CampaignSummaryRow = {
   adgroup_id: string | null;
   creative_id: string | null;
   channel: string | null;
+  link_type: string | null;
   clicks: number;
+  impressions: number;
   installs: number;
+  cta_installs: number;
+  vta_installs: number;
   conversions: number;
   revenue: number;
   cost: number;
@@ -131,8 +135,6 @@ export async function campaignSummary(
   fromDate?: string,
   toDate?: string,
 ): Promise<CampaignSummaryRow[]> {
-  // Base the summary on click_events so web campaigns (clicks without app installs)
-  // are represented too, then LEFT JOIN attributed installs/conversions.
   const clickParams: unknown[] = [companyId];
   let clickDateFilter = "";
   if (fromDate) {
@@ -142,6 +144,17 @@ export async function campaignSummary(
   if (toDate) {
     clickParams.push(toDate);
     clickDateFilter += ` AND clicked_at <= $${clickParams.length}`;
+  }
+
+  const impParams: unknown[] = [companyId];
+  let impDateFilter = "";
+  if (fromDate) {
+    impParams.push(fromDate);
+    impDateFilter += ` AND viewed_at >= $${impParams.length}`;
+  }
+  if (toDate) {
+    impParams.push(toDate);
+    impDateFilter += ` AND viewed_at <= $${impParams.length}`;
   }
 
   const convParams: unknown[] = [companyId];
@@ -155,52 +168,82 @@ export async function campaignSummary(
     convDateFilter += ` AND ae.attributed_at <= $${convParams.length}`;
   }
 
-  const params = [...clickParams, ...convParams];
-  // Conversion CTE params are offset by the number of click params.
-  const convClause = convDateFilter.replace(/\$(\d+)/g, (_, n) => `$${Number(n) + clickParams.length}`);
+  const clickOffset = 0;
+  const impOffset = clickParams.length;
+  const convOffset = clickParams.length + impParams.length;
+  const params = [...clickParams, ...impParams, ...convParams];
+
+  const remap = (clause: string, offset: number) =>
+    clause.replace(/\$(\d+)/g, (_, n) => `$${Number(n) + offset}`);
+
+  const impClause = remap(impDateFilter, impOffset);
+  const convClause = remap(convDateFilter, convOffset);
 
   const { rows } = await db.query<CampaignSummaryRow>(
     `WITH clicks AS (
        SELECT
          media_source, campaign_id, adgroup_id, creative_id, channel,
+         COALESCE(metadata_json::json->>'linkType', NULL) AS link_type,
          COUNT(*)::int AS clicks,
          COALESCE(SUM(COALESCE(cost_value, 0)), 0)::float AS cost
        FROM click_events
        WHERE company_id = $1${clickDateFilter}
-       GROUP BY media_source, campaign_id, adgroup_id, creative_id, channel
+         AND COALESCE(metadata_json::json->>'source', '') IS DISTINCT FROM 'vta_impression'
+       GROUP BY media_source, campaign_id, adgroup_id, creative_id, channel, COALESCE(metadata_json::json->>'linkType', NULL)
+     ),
+     impressions AS (
+       SELECT
+         li.media_source, li.campaign_id, li.adgroup_id, li.creative_id, li.channel,
+         tl.link_type,
+         COUNT(*)::int AS impressions
+       FROM link_impressions li
+       LEFT JOIN tracking_links tl ON tl.id = li.link_id
+       WHERE li.company_id = $${impOffset + 1}${impClause}
+       GROUP BY li.media_source, li.campaign_id, li.adgroup_id, li.creative_id, li.channel, tl.link_type
      ),
      conversions AS (
        SELECT
          ce.media_source, ce.campaign_id, ce.adgroup_id, ce.creative_id, ce.channel,
+         COALESCE(ce.metadata_json::json->>'linkType', NULL) AS link_type,
          COALESCE(SUM(CASE WHEN se.event_type = 'install' THEN 1 ELSE 0 END), 0)::int AS installs,
+         COALESCE(SUM(CASE WHEN se.event_type = 'install' AND COALESCE(ae.attribution_path, 'cta') = 'cta' THEN 1 ELSE 0 END), 0)::int AS cta_installs,
+         COALESCE(SUM(CASE WHEN se.event_type = 'install' AND ae.attribution_path = 'vta' THEN 1 ELSE 0 END), 0)::int AS vta_installs,
          COALESCE(SUM(CASE WHEN se.event_type = 'conversion' THEN 1 ELSE 0 END), 0)::int AS conversions,
          COALESCE(SUM(CASE WHEN se.event_type = 'conversion'
            THEN COALESCE((se.payload_json::json->>'value')::numeric, 0) ELSE 0 END), 0)::float AS revenue
        FROM attribution_events ae
        JOIN click_events ce ON ce.id = ae.click_event_id
        LEFT JOIN sdk_events se ON se.id = ae.conversion_event_id
-       WHERE ae.company_id = $${clickParams.length + 1}${convClause}
-       GROUP BY ce.media_source, ce.campaign_id, ce.adgroup_id, ce.creative_id, ce.channel
+       WHERE ae.company_id = $${convOffset + 1}${convClause}
+       GROUP BY ce.media_source, ce.campaign_id, ce.adgroup_id, ce.creative_id, ce.channel, COALESCE(ce.metadata_json::json->>'linkType', NULL)
+     ),
+     combined AS (
+       SELECT media_source, campaign_id, adgroup_id, creative_id, channel, link_type,
+              clicks, 0::int AS impressions, 0::int AS installs, 0::int AS cta_installs, 0::int AS vta_installs,
+              0::int AS conversions, 0::float AS revenue, cost
+       FROM clicks
+       UNION ALL
+       SELECT media_source, campaign_id, adgroup_id, creative_id, channel, link_type,
+              0, impressions, 0, 0, 0, 0, 0, 0
+       FROM impressions
+       UNION ALL
+       SELECT media_source, campaign_id, adgroup_id, creative_id, channel, link_type,
+              0, 0, installs, cta_installs, vta_installs, conversions, revenue, 0
+       FROM conversions
      )
      SELECT
-       COALESCE(c.media_source, v.media_source) AS media_source,
-       COALESCE(c.campaign_id, v.campaign_id) AS campaign_id,
-       COALESCE(c.adgroup_id, v.adgroup_id) AS adgroup_id,
-       COALESCE(c.creative_id, v.creative_id) AS creative_id,
-       COALESCE(c.channel, v.channel) AS channel,
-       COALESCE(c.clicks, 0)::int AS clicks,
-       COALESCE(v.installs, 0)::int AS installs,
-       COALESCE(v.conversions, 0)::int AS conversions,
-       COALESCE(v.revenue, 0)::float AS revenue,
-       COALESCE(c.cost, 0)::float AS cost
-     FROM clicks c
-     FULL OUTER JOIN conversions v
-       ON c.media_source IS NOT DISTINCT FROM v.media_source
-      AND c.campaign_id IS NOT DISTINCT FROM v.campaign_id
-      AND c.adgroup_id IS NOT DISTINCT FROM v.adgroup_id
-      AND c.creative_id IS NOT DISTINCT FROM v.creative_id
-      AND c.channel IS NOT DISTINCT FROM v.channel
-     ORDER BY installs DESC, clicks DESC`,
+       media_source, campaign_id, adgroup_id, creative_id, channel, link_type,
+       SUM(clicks)::int AS clicks,
+       SUM(impressions)::int AS impressions,
+       SUM(installs)::int AS installs,
+       SUM(cta_installs)::int AS cta_installs,
+       SUM(vta_installs)::int AS vta_installs,
+       SUM(conversions)::int AS conversions,
+       SUM(revenue)::float AS revenue,
+       SUM(cost)::float AS cost
+     FROM combined
+     GROUP BY media_source, campaign_id, adgroup_id, creative_id, channel, link_type
+     ORDER BY installs DESC, clicks DESC, impressions DESC`,
     params,
   );
   return rows;
@@ -209,19 +252,46 @@ export async function campaignSummary(
 export async function organicVsNonOrganic(
   db: pg.Pool,
   companyId: string,
-): Promise<{ organic: number; non_organic: number }> {
-  const { rows } = await db.query<{ organic: string; non_organic: string }>(
+): Promise<{
+  organic: number;
+  non_organic: number;
+  clicks: number;
+  impressions: number;
+  cta_installs: number;
+  vta_installs: number;
+}> {
+  const { rows } = await db.query<{
+    organic: string;
+    non_organic: string;
+    cta_installs: string;
+    vta_installs: string;
+  }>(
     `SELECT
        COALESCE(SUM(CASE WHEN COALESCE(ae.is_organic, false) = true THEN 1 ELSE 0 END), 0)::text AS organic,
-       COALESCE(SUM(CASE WHEN COALESCE(ae.is_organic, false) = false AND ae.click_event_id IS NOT NULL THEN 1 ELSE 0 END), 0)::text AS non_organic
+       COALESCE(SUM(CASE WHEN COALESCE(ae.is_organic, false) = false AND ae.click_event_id IS NOT NULL THEN 1 ELSE 0 END), 0)::text AS non_organic,
+       COALESCE(SUM(CASE WHEN se.event_type = 'install' AND COALESCE(ae.attribution_path, 'cta') = 'cta' AND COALESCE(ae.is_organic, false) = false THEN 1 ELSE 0 END), 0)::text AS cta_installs,
+       COALESCE(SUM(CASE WHEN se.event_type = 'install' AND ae.attribution_path = 'vta' THEN 1 ELSE 0 END), 0)::text AS vta_installs
      FROM attribution_events ae
      JOIN sdk_events se ON se.id = ae.conversion_event_id AND se.event_type = 'install'
      WHERE ae.company_id = $1`,
     [companyId],
   );
+  const clicksRes = await db.query<{ c: string }>(
+    `SELECT COUNT(*)::text AS c FROM click_events
+     WHERE company_id = $1 AND COALESCE(metadata_json::json->>'source', '') IS DISTINCT FROM 'vta_impression'`,
+    [companyId],
+  );
+  const impRes = await db.query<{ c: string }>(
+    `SELECT COUNT(*)::text AS c FROM link_impressions WHERE company_id = $1`,
+    [companyId],
+  );
   return {
     organic: Number(rows[0]?.organic ?? 0),
     non_organic: Number(rows[0]?.non_organic ?? 0),
+    clicks: Number(clicksRes.rows[0]?.c ?? 0),
+    impressions: Number(impRes.rows[0]?.c ?? 0),
+    cta_installs: Number(rows[0]?.cta_installs ?? 0),
+    vta_installs: Number(rows[0]?.vta_installs ?? 0),
   };
 }
 

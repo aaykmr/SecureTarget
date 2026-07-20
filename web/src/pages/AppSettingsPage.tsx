@@ -52,6 +52,7 @@ export function AppSettingsPage() {
         associatedDomain: String(form.get("associatedDomain") ?? "").trim() || null,
         partnerPostbackUrl: String(form.get("partnerPostbackUrl") ?? "").trim() || null,
         installAttributionWindowHours: Number(form.get("installWindowHours") ?? 24) || 24,
+        viewThroughAttributionWindowHours: Number(form.get("viewThroughWindowHours") ?? 24) || 24,
         enableProbabilisticMatching: form.get("enableProbabilistic") === "on",
         androidSha256Certs: String(form.get("androidSha256Certs") ?? "")
           .split("\n")
@@ -137,6 +138,13 @@ export function AppSettingsPage() {
               label="Install attribution window (hours)"
               min={1}
               defaultValue={settings?.installAttributionWindowHours ?? 24}
+            />
+            <Input
+              name="viewThroughWindowHours"
+              type="number"
+              label="View-through (VTA) window (hours)"
+              min={1}
+              defaultValue={settings?.viewThroughAttributionWindowHours ?? 24}
             />
             <label className={styles.checkbox}>
               <input

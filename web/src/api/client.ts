@@ -133,17 +133,29 @@ export type SdkEvent = {
   created_at: string;
 };
 
+export type LinkType =
+  | "cta"
+  | "vta"
+  | "one_link"
+  | "hyperlink"
+  | "deeplink"
+  | "short_link"
+  | "ctv"
+  | "referral";
+
 export type TrackingLink = {
   id: string;
   company_id: string;
   name: string;
   slug: string;
   destination_type: string;
+  link_type: LinkType;
   ios_url: string | null;
   android_url: string | null;
   web_url: string | null;
   default_params_json: string | null;
   campaign_presets_json: string | null;
+  config_json: string | null;
   created_at: string;
 };
 
@@ -153,8 +165,12 @@ export type CampaignSummaryRow = {
   adgroup_id: string | null;
   creative_id: string | null;
   channel: string | null;
+  link_type: string | null;
   clicks: number;
+  impressions: number;
   installs: number;
+  cta_installs: number;
+  vta_installs: number;
   conversions: number;
   revenue: number;
   cost: number;
@@ -186,6 +202,7 @@ export type AttributionSettings = {
   installAttributionWindowHours: number;
   conversionAttributionWindowHours: number;
   reengagementWindowHours: number;
+  viewThroughAttributionWindowHours: number;
   enableProbabilisticMatching: boolean;
   probabilisticMinConfidence: number;
   iosAppId: string | null;
@@ -395,13 +412,28 @@ export const api = {
       totalPages: number;
     }>(`/v1/projects/${projectId}/events${qs ? `?${qs}` : ""}`, { token });
   },
-  listLinks(token: string, projectId: string) {
-    return request<{ links: TrackingLink[] }>(`/v1/projects/${projectId}/links`, { token });
+  listLinks(token: string, projectId: string, linkType?: LinkType) {
+    const q = linkType ? `?linkType=${encodeURIComponent(linkType)}` : "";
+    return request<{ links: TrackingLink[] }>(`/v1/projects/${projectId}/links${q}`, { token });
   },
   createLink(
     token: string,
     projectId: string,
-    body: { name: string; slug: string; iosUrl?: string; androidUrl?: string; webUrl?: string },
+    body: {
+      name: string;
+      slug: string;
+      linkType?: LinkType;
+      iosUrl?: string;
+      androidUrl?: string;
+      webUrl?: string;
+      destinationUrl?: string;
+      mediaSource?: string;
+      campaignId?: string;
+      channel?: string;
+      referrerCode?: string;
+      defaultDeepLinkValue?: string;
+      viewThroughWindowHours?: number;
+    },
   ) {
     return request<{ link: TrackingLink }>(`/v1/projects/${projectId}/links`, {
       method: "POST",
@@ -454,10 +486,17 @@ export const api = {
     });
   },
   getCampaignSummary(token: string, projectId: string) {
-    return request<{ summary: CampaignSummaryRow[]; organic: { organic: number; non_organic: number } }>(
-      `/v1/projects/${projectId}/campaigns/summary`,
-      { token },
-    );
+    return request<{
+      summary: CampaignSummaryRow[];
+      organic: {
+        organic: number;
+        non_organic: number;
+        clicks: number;
+        impressions: number;
+        cta_installs: number;
+        vta_installs: number;
+      };
+    }>(`/v1/projects/${projectId}/campaigns/summary`, { token });
   },
   listInstallAttributions(token: string, projectId: string, limit = 50) {
     return request<{ installs: InstallAttribution[] }>(

@@ -132,7 +132,8 @@ CREATE TABLE IF NOT EXISTS attribution_events (
   reengagement_window_hours INTEGER,
   confidence DOUBLE PRECISION NOT NULL DEFAULT 1.0,
   match_rule TEXT,
-  is_organic BOOLEAN
+  is_organic BOOLEAN,
+  attribution_path TEXT
 );
 
 CREATE TABLE IF NOT EXISTS sdk_events (
@@ -175,20 +176,25 @@ CREATE TABLE IF NOT EXISTS tracking_links (
   name TEXT NOT NULL,
   slug TEXT NOT NULL,
   destination_type TEXT NOT NULL DEFAULT 'web',
+  link_type TEXT NOT NULL DEFAULT 'one_link',
   ios_url TEXT,
   android_url TEXT,
   web_url TEXT,
   default_params_json TEXT,
   campaign_presets_json TEXT,
+  config_json JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (company_id, slug)
 );
+
+CREATE INDEX IF NOT EXISTS idx_tracking_links_type ON tracking_links(company_id, link_type);
 
 CREATE TABLE IF NOT EXISTS project_attribution_settings (
   company_id TEXT PRIMARY KEY,
   install_attribution_window_hours INTEGER NOT NULL DEFAULT 24,
   conversion_attribution_window_hours INTEGER NOT NULL DEFAULT 168,
   reengagement_window_hours INTEGER NOT NULL DEFAULT 168,
+  view_through_attribution_window_hours INTEGER NOT NULL DEFAULT 24,
   enable_probabilistic_matching BOOLEAN NOT NULL DEFAULT TRUE,
   probabilistic_min_confidence DOUBLE PRECISION NOT NULL DEFAULT 0.7,
   ios_app_id TEXT,
@@ -265,6 +271,27 @@ CREATE TABLE IF NOT EXISTS pending_clicks (
   idfa TEXT,
   metadata_json TEXT
 );
+
+CREATE TABLE IF NOT EXISTS link_impressions (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL,
+  link_id TEXT,
+  impression_id TEXT NOT NULL UNIQUE,
+  media_source TEXT,
+  campaign_id TEXT,
+  adgroup_id TEXT,
+  creative_id TEXT,
+  channel TEXT,
+  ip TEXT,
+  user_agent TEXT,
+  viewed_at TIMESTAMPTZ NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  matched_at TIMESTAMPTZ,
+  metadata_json TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_link_impressions_company ON link_impressions(company_id, viewed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_link_impressions_link ON link_impressions(link_id, viewed_at DESC);
 
 CREATE TABLE IF NOT EXISTS click_device_signals (
   id TEXT PRIMARY KEY,

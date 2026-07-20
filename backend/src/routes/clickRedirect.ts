@@ -5,7 +5,9 @@ import type pg from "pg";
 import {
   getTrackingLinkBySlugGlobal,
   parseCampaignParams,
+  parseLinkConfig,
   type CampaignParams,
+  type TrackingLinkRow,
 } from "../services/trackingLinks.js";
 import { isPgConn, pgExecute } from "../db/ingestDb.js";
 
@@ -57,10 +59,12 @@ export async function insertPendingClick(
     userAgent?: string | null;
     expiresAt: string;
     metadata?: Record<string, unknown>;
+    platformHint?: string | null;
   }
 ): Promise<string> {
   const clickId = input.params.clickId ?? crypto.randomUUID();
   const now = new Date().toISOString();
+  const platformHint = input.platformHint ?? detectPlatformHint(input.userAgent ?? null);
   if (isPgConn(deviceDb)) {
     await pgExecute(
       deviceDb,
@@ -80,7 +84,7 @@ export async function insertPendingClick(
         input.params.deepLinkValue ?? null,
         input.ip ?? null,
         input.userAgent ?? null,
-        detectPlatformHint(input.userAgent ?? null),
+        platformHint,
         now,
         input.expiresAt,
         input.metadata ? JSON.stringify(input.metadata) : null,
@@ -107,7 +111,7 @@ export async function insertPendingClick(
       input.params.deepLinkValue ?? null,
       input.ip ?? null,
       input.userAgent ?? null,
-      detectPlatformHint(input.userAgent ?? null),
+      platformHint,
       now,
       input.expiresAt,
       input.metadata ? JSON.stringify(input.metadata) : null
@@ -163,6 +167,60 @@ function buildPlayStoreUrl(androidUrl: string, referrer: string): string {
   return url.toString();
 }
 
+function resolveDestination(
+  link: TrackingLinkRow,
+  clickId: string,
+  params: CampaignParams,
+  userAgent: string | null,
+): string | null {
+  const config = parseLinkConfig(link.config_json);
+  const linkType = link.link_type;
+  const platformHint = linkType === "ctv" ? "ctv" : detectPlatformHint(userAgent);
+  const deepLink =
+    params.deepLinkValue || config.defaultDeepLinkValue || null;
+
+  // Hyperlink / short_link / referral / vta-as-click: web only
+  if (linkType === "hyperlink" || linkType === "short_link" || linkType === "vta") {
+    const web = link.web_url || config.destinationUrl;
+    return web ? buildRedirectUrl(web, clickId, params, deepLink) : null;
+  }
+
+  if (linkType === "referral") {
+    const web = link.web_url || config.destinationUrl || link.ios_url || link.android_url;
+    return web ? buildRedirectUrl(web, clickId, params, deepLink) : null;
+  }
+
+  if (linkType === "ctv") {
+    const dest = link.web_url || config.destinationUrl || link.ios_url || link.android_url;
+    return dest ? buildRedirectUrl(dest, clickId, params, deepLink) : null;
+  }
+
+  // one_link, deeplink, cta: UA-based multi destination
+  if (platformHint === "ios" && link.ios_url) {
+    return buildRedirectUrl(link.ios_url, clickId, params, deepLink);
+  }
+  if (platformHint === "android" && link.android_url) {
+    const referrer = encodeURIComponent(
+      `st_click_id=${clickId}${params.mediaSource ? `&pid=${params.mediaSource}` : ""}${params.campaignId ? `&c=${params.campaignId}` : ""}`,
+    );
+    return buildPlayStoreUrl(link.android_url, referrer);
+  }
+  if (link.web_url) {
+    return buildRedirectUrl(link.web_url, clickId, params, deepLink);
+  }
+  if (link.ios_url) {
+    return buildRedirectUrl(link.ios_url, clickId, params, deepLink);
+  }
+  if (link.android_url) {
+    const referrer = encodeURIComponent(`st_click_id=${clickId}`);
+    return buildPlayStoreUrl(link.android_url, referrer);
+  }
+  if (config.destinationUrl) {
+    return buildRedirectUrl(config.destinationUrl, clickId, params, deepLink);
+  }
+  return null;
+}
+
 export async function handleClickRedirect(
   req: IncomingMessage,
   res: ServerResponse,
@@ -177,11 +235,13 @@ export async function handleClickRedirect(
     return;
   }
 
+  // VTA links prefer impression pixel; clicks still allowed for testing
   const rawUrl = req.url ?? "";
   const qIdx = rawUrl.indexOf("?");
   const queryString = qIdx === -1 ? "" : rawUrl.slice(qIdx + 1);
   const query = new URLSearchParams(queryString);
   const params = parseCampaignParams(query);
+  const config = parseLinkConfig(link.config_json);
 
   if (link.default_params_json) {
     const defaults = JSON.parse(link.default_params_json) as Record<string, string>;
@@ -192,17 +252,32 @@ export async function handleClickRedirect(
     if (!params.channel && defaults.channel) params.channel = defaults.channel;
     if (!params.deepLinkValue && defaults.deepLinkValue) params.deepLinkValue = defaults.deepLinkValue;
   }
+  if (!params.deepLinkValue && config.defaultDeepLinkValue) {
+    params.deepLinkValue = config.defaultDeepLinkValue;
+  }
+
+  const refCode = query.get("ref") ?? query.get("referrer") ?? config.referrerCode ?? undefined;
+  if (link.link_type === "referral" && refCode && !params.channel) {
+    params.channel = "referral";
+  }
 
   const expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
   const ip = clientIp(req);
   const userAgent = typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null;
+  const platformHint = link.link_type === "ctv" ? "ctv" : detectPlatformHint(userAgent);
+
   const clickId = await insertPendingClick(deviceDb, {
     companyId: link.company_id,
     linkId: link.id,
     params,
     ip,
     userAgent,
-    expiresAt
+    expiresAt,
+    platformHint,
+    metadata: {
+      linkType: link.link_type,
+      ...(refCode ? { referrerCode: refCode } : {}),
+    },
   });
 
   res.setHeader(
@@ -210,24 +285,7 @@ export async function handleClickRedirect(
     `st_click_id=${clickId}; Path=/; Max-Age=${7 * 24 * 3600}; SameSite=Lax`
   );
 
-  const platformHint = detectPlatformHint(userAgent);
-  let destination: string | null = null;
-
-  if (platformHint === "ios" && link.ios_url) {
-    destination = buildRedirectUrl(link.ios_url, clickId, params, params.deepLinkValue);
-  } else if (platformHint === "android" && link.android_url) {
-    const referrer = encodeURIComponent(
-      `st_click_id=${clickId}${params.mediaSource ? `&pid=${params.mediaSource}` : ""}${params.campaignId ? `&c=${params.campaignId}` : ""}`
-    );
-    destination = buildPlayStoreUrl(link.android_url, referrer);
-  } else if (link.web_url) {
-    destination = buildRedirectUrl(link.web_url, clickId, params, params.deepLinkValue);
-  } else if (link.ios_url) {
-    destination = buildRedirectUrl(link.ios_url, clickId, params, params.deepLinkValue);
-  } else if (link.android_url) {
-    const referrer = encodeURIComponent(`st_click_id=${clickId}`);
-    destination = buildPlayStoreUrl(link.android_url, referrer);
-  }
+  const destination = resolveDestination(link, clickId, params, userAgent);
 
   if (!destination) {
     res.statusCode = 400;

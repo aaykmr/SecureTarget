@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS attribution_events (
   confidence REAL NOT NULL DEFAULT 1.0,
   match_rule TEXT,
   is_organic INTEGER,
+  attribution_path TEXT,
   FOREIGN KEY(click_event_id) REFERENCES click_events(id)
 );
 
@@ -172,21 +173,25 @@ CREATE TABLE IF NOT EXISTS tracking_links (
   name TEXT NOT NULL,
   slug TEXT NOT NULL,
   destination_type TEXT NOT NULL DEFAULT 'web',
+  link_type TEXT NOT NULL DEFAULT 'one_link',
   ios_url TEXT,
   android_url TEXT,
   web_url TEXT,
-      default_params_json TEXT,
-      campaign_presets_json TEXT,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  default_params_json TEXT,
+  campaign_presets_json TEXT,
+  config_json TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_tracking_links_slug ON tracking_links(company_id, slug);
+CREATE INDEX IF NOT EXISTS idx_tracking_links_type ON tracking_links(company_id, link_type);
 
 CREATE TABLE IF NOT EXISTS project_attribution_settings (
   company_id TEXT PRIMARY KEY,
   install_attribution_window_hours INTEGER NOT NULL DEFAULT 24,
   conversion_attribution_window_hours INTEGER NOT NULL DEFAULT 168,
   reengagement_window_hours INTEGER NOT NULL DEFAULT 168,
+  view_through_attribution_window_hours INTEGER NOT NULL DEFAULT 24,
   enable_probabilistic_matching INTEGER NOT NULL DEFAULT 1,
   probabilistic_min_confidence REAL NOT NULL DEFAULT 0.7,
   ios_app_id TEXT,

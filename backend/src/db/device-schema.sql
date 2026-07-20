@@ -65,6 +65,27 @@ CREATE TABLE IF NOT EXISTS pending_clicks (
   metadata_json TEXT
 );
 
+CREATE TABLE IF NOT EXISTS link_impressions (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL,
+  link_id TEXT,
+  impression_id TEXT NOT NULL UNIQUE,
+  media_source TEXT,
+  campaign_id TEXT,
+  adgroup_id TEXT,
+  creative_id TEXT,
+  channel TEXT,
+  ip TEXT,
+  user_agent TEXT,
+  viewed_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  matched_at TEXT,
+  metadata_json TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_link_impressions_company ON link_impressions(company_id, viewed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_link_impressions_link ON link_impressions(link_id, viewed_at DESC);
+
 CREATE TABLE IF NOT EXISTS click_device_signals (
   id TEXT PRIMARY KEY,
   click_id TEXT NOT NULL,

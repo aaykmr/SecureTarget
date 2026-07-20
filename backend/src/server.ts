@@ -6,6 +6,7 @@ import { IngestDb } from "./db/ingestDb.js";
 import { handleIngest } from "./routes/ingest.js";
 import { handleSessionBootstrap } from "./routes/sessionBootstrap.js";
 import { handleClickRedirect } from "./routes/clickRedirect.js";
+import { handleImpressionPixel } from "./routes/impressionPixel.js";
 import { handleSkanPostback, handleCostIngest } from "./routes/skanPostback.js";
 import { handleAppleAppSiteAssociation, handleAssetLinks } from "./routes/deepLinkConfig.js";
 import { handleDashboardApi, isDashboardPath } from "./dashboard/router.js";
@@ -51,6 +52,15 @@ function parseClickSlug(url: string): string | null {
   return slug.length > 0 ? slug : null;
 }
 
+function parseImpressionSlug(url: string): string | null {
+  const path = requestPath(url);
+  const prefix = "/v1/i/";
+  if (!path.startsWith(prefix)) return null;
+  let slug = path.slice(prefix.length);
+  if (slug.endsWith(".gif")) slug = slug.slice(0, -4);
+  return slug.length > 0 ? slug : null;
+}
+
 function parseWellKnownCompany(url: string): { type: "aasa" | "assetlinks"; companyId: string } | null {
   const path = requestPath(url);
   const aasaMatch = path.match(/^\/\.well-known\/apple-app-site-association\/([^/]+)$/);
@@ -77,6 +87,12 @@ const server = createServer(async (req, res) => {
   const clickSlug = req.method === "GET" ? parseClickSlug(req.url) : null;
   if (clickSlug) {
     await handleClickRedirect(req, res, ingestDb.customer(), ingestDb.device(), clickSlug);
+    return;
+  }
+
+  const impressionSlug = req.method === "GET" ? parseImpressionSlug(req.url) : null;
+  if (impressionSlug) {
+    await handleImpressionPixel(req, res, ingestDb.customer(), ingestDb.device(), impressionSlug);
     return;
   }
 

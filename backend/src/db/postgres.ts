@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { migrateOrganizationsSchema } from "./migrateOrganizations.js";
+import { migrateTrackingLinksSchema } from "./migrateTrackingLinks.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -26,6 +27,7 @@ export async function initPostgresSchema(): Promise<void> {
   // existing production DBs. Indexes that depend on added columns live in the migration.
   await db.query(sql);
   await migrateOrganizationsSchema(db);
+  await migrateTrackingLinksSchema(db);
 }
 
 export async function closePostgresPool(): Promise<void> {

@@ -58,9 +58,13 @@ import {
   deleteTrackingLink,
   getAttributionSettings,
   getTrackingLinkForCompany,
+  isLinkType,
   listTrackingLinks,
+  parseLinkConfig,
   updateTrackingLinkCampaignPresets,
   upsertAttributionSettings,
+  type LinkConfig,
+  type LinkType,
 } from "../services/trackingLinks.js";
 
 function appBaseUrl(): string {
@@ -847,7 +851,9 @@ export async function handleDashboardApi(
   // GET /v1/projects/:id/links
   if (req.method === "GET" && parts[0] === "projects" && parts[2] === "links" && parts.length === 3) {
     if (await denyUnlessProjectTab("links")) return true;
-    const links = await listTrackingLinks(db, project!.company_id);
+    const linkTypeRaw = parseQuery(req).get("linkType");
+    const linkType = linkTypeRaw && isLinkType(linkTypeRaw) ? linkTypeRaw : undefined;
+    const links = await listTrackingLinks(db, project!.company_id, linkType);
     sendJson(res, 200, { links });
     return true;
   }
@@ -859,9 +865,19 @@ export async function handleDashboardApi(
       const body = (await readJsonBody(req)) as {
         name?: string;
         slug?: string;
+        linkType?: string;
         iosUrl?: string;
         androidUrl?: string;
         webUrl?: string;
+        defaultParams?: Record<string, unknown>;
+        config?: LinkConfig;
+        mediaSource?: string;
+        campaignId?: string;
+        channel?: string;
+        referrerCode?: string;
+        defaultDeepLinkValue?: string;
+        viewThroughWindowHours?: number;
+        destinationUrl?: string;
       };
       const name = String(body.name ?? "").trim();
       const slug = String(body.slug ?? "").trim().toLowerCase();
@@ -873,14 +889,58 @@ export async function handleDashboardApi(
         sendJson(res, 400, { error: "Slug must be lowercase alphanumeric with hyphens." });
         return true;
       }
+      const linkType: LinkType = body.linkType && isLinkType(body.linkType) ? body.linkType : "one_link";
+      const config: LinkConfig = {
+        ...parseLinkConfig(body.config),
+        ...(body.referrerCode ? { referrerCode: String(body.referrerCode).trim() } : {}),
+        ...(body.defaultDeepLinkValue
+          ? { defaultDeepLinkValue: String(body.defaultDeepLinkValue).trim() }
+          : {}),
+        ...(typeof body.viewThroughWindowHours === "number"
+          ? { viewThroughWindowHours: body.viewThroughWindowHours }
+          : {}),
+        ...(body.destinationUrl ? { destinationUrl: String(body.destinationUrl).trim() } : {}),
+      };
+
+      let webUrl = body.webUrl?.trim() || undefined;
+      let iosUrl = body.iosUrl?.trim() || undefined;
+      let androidUrl = body.androidUrl?.trim() || undefined;
+      if (config.destinationUrl && (linkType === "short_link" || linkType === "hyperlink" || linkType === "ctv" || linkType === "referral" || linkType === "vta")) {
+        webUrl = webUrl || config.destinationUrl;
+      }
+      if (linkType === "hyperlink" && !webUrl) {
+        sendJson(res, 400, { error: "Web URL is required for hyperlinks." });
+        return true;
+      }
+      if (linkType === "short_link" && !webUrl) {
+        sendJson(res, 400, { error: "Destination URL is required for short links." });
+        return true;
+      }
+      if (linkType === "deeplink" && !iosUrl && !androidUrl) {
+        sendJson(res, 400, { error: "At least one app URL is required for deeplinks." });
+        return true;
+      }
+      if (linkType === "one_link" && !iosUrl && !androidUrl && !webUrl) {
+        sendJson(res, 400, { error: "At least one destination URL is required for One Link." });
+        return true;
+      }
+
+      const defaultParams: Record<string, unknown> = { ...(body.defaultParams ?? {}) };
+      if (body.mediaSource) defaultParams.mediaSource = String(body.mediaSource).trim();
+      if (body.campaignId) defaultParams.campaignId = String(body.campaignId).trim();
+      if (body.channel) defaultParams.channel = String(body.channel).trim();
+      if (config.defaultDeepLinkValue) defaultParams.deepLinkValue = config.defaultDeepLinkValue;
+
       const link = await createTrackingLink(db, {
         companyId: project!.company_id,
         name,
         slug,
-        destinationType: "multi",
-        iosUrl: body.iosUrl?.trim() || undefined,
-        androidUrl: body.androidUrl?.trim() || undefined,
-        webUrl: body.webUrl?.trim() || undefined,
+        linkType,
+        iosUrl,
+        androidUrl,
+        webUrl,
+        defaultParams: Object.keys(defaultParams).length ? defaultParams : undefined,
+        config: Object.keys(config).length ? config : undefined,
       });
       sendJson(res, 201, { link });
     } catch (e) {
@@ -979,6 +1039,7 @@ export async function handleDashboardApi(
       androidSha256Certs?: string[];
       skanIds?: string[];
       installAttributionWindowHours?: number;
+      viewThroughAttributionWindowHours?: number;
       enableProbabilisticMatching?: boolean;
     };
     await upsertAttributionSettings(db, project!.company_id, {
@@ -990,6 +1051,7 @@ export async function handleDashboardApi(
       androidSha256Certs: body.androidSha256Certs,
       skanIds: body.skanIds,
       installAttributionWindowHours: body.installAttributionWindowHours,
+      viewThroughAttributionWindowHours: body.viewThroughAttributionWindowHours,
       enableProbabilisticMatching: body.enableProbabilisticMatching,
     });
     sendJson(res, 200, { ok: true });
