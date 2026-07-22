@@ -1,88 +1,28 @@
 # EventIQN
 
-EventIQN is an attribution and event ingest platform. Apps send events to the ingest API; the dashboard provides projects, API keys, campaign links, and analytics.
+> AI-ready attribution and event ingest: measure apps, web, CTV, and more with campaign links, SDKs, and a dashboard for projects, API keys, and analytics.
 
-## Dashboard (human setup)
+EventIQN apps send events to the ingest API. Humans use the dashboard SPA to create projects, issue API keys, build tracking links, and review events. Agents should ask for `companyId`, ingest `endpoint`, and a dashboard-generated API key — never invent keys or commit production secrets.
 
-1. Sign in at the dashboard SPA (invite-only; join the homepage waitlist for access).
-2. Create a project — note the project-specific `companyId`.
-3. Generate an API key in the project overview **API keys** panel. The full key is shown once; only a prefix is stored afterward.
-4. Use the Integration panel for Web, iOS, and Android setup steps.
+## Product
 
-## Shared SDK configuration
+- [EventIQN homepage](https://eventiqn.trusttargets.com/): Product overview and waitlist for invite-only dashboard access
+- [Sign in](https://eventiqn.trusttargets.com/login): Dashboard login for invited users
+- [Privacy policy](https://eventiqn.trusttargets.com/privacy): Privacy terms for the product and site
+- [Terms of service](https://eventiqn.trusttargets.com/terms): Legal terms of use
 
-Every platform needs:
+## SDKs and downloads
 
-- `apiKey` — from dashboard API keys (`x-api-key` header on ingest requests)
-- `companyId` — project identifier from the dashboard
-- `endpoint` — ingest API base URL (example production: https://api.eventiqn.trusttargets.com)
+- [Web SDK (browser script)](https://eventiqn.trusttargets.com/sdk.js): Hosted browser SDK; call `EventIQN.init({ apiKey, companyId, endpoint })`
+- [iOS SDK zip](https://eventiqn.trusttargets.com/downloads/eventiqn-ios-sdk.zip): Native iOS SDK sources for install and deep-link attribution
+- [Android SDK zip](https://eventiqn.trusttargets.com/downloads/eventiqn-android-sdk.zip): Kotlin Android SDK with Play Install Referrer support
 
-Never commit production API keys to source control. Use environment variables or server-side injection.
+## API
 
-## Web SDK
+- [Ingest health check](https://api.eventiqn.trusttargets.com/healthz): Liveness probe for the ingest/API host
+- [Ingest API base](https://api.eventiqn.trusttargets.com/): Production ingest and dashboard API origin (`POST /v1/session/bootstrap`, `POST /v1/record`, auth and project routes)
 
-Hosted script: `/sdk.js` on the dashboard origin (example: https://eventiqn.trusttargets.com/sdk.js).
+## Optional
 
-npm package: `@eventiqn/web-sdk`
-
-```javascript
-import { init } from "@eventiqn/web-sdk";
-
-const st = init({
-  apiKey: "YOUR_API_KEY",
-  companyId: "YOUR_COMPANY_ID",
-  endpoint: "https://api.eventiqn.trusttargets.com",
-});
-```
-
-Script tag: load `/sdk.js`, then `window.EventIQN.init({ apiKey, companyId, endpoint })`.
-
-## iOS SDK
-
-Download: `/downloads/eventiqn-ios-sdk.zip`
-
-Initialize `EventIQNSDK` with apiKey, companyId, endpoint URL. Call `bootstrapSession()` on launch. Forward deep links via `handleDeepLink(url:)`.
-
-## Android SDK
-
-Download: `/downloads/eventiqn-android-sdk.zip`
-
-Add Kotlin sources and `com.android.installreferrer:installreferrer:2.2`. Initialize `EventIQNSdk` with apiKey, companyId, endpoint. Call `ensureSession()` in `Application.onCreate`. Pass intents to `handleDeepLink`.
-
-## Ingest API (SDK / server)
-
-Base URL: project-specific ingest endpoint (see dashboard Integration panel).
-
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | /healthz | Health check |
-| POST | /v1/session/bootstrap | Create or resume session |
-| POST | /v1/record | Send events (login, install, conversion, etc.) |
-
-Headers: `x-api-key`, `x-session-id` (after bootstrap), `Content-Type: application/json`.
-
-## Dashboard API (authenticated)
-
-Base URL: same host as ingest in typical deployments.
-
-| Method | Path | Purpose |
-|--------|------|---------|
-| POST | /v1/auth/login | Sign in (Bearer token) |
-| POST | /v1/auth/accept-invite | Accept org invite + set password |
-| GET | /v1/auth/me | Current user + organizations |
-| GET/POST | /v1/organizations | List/create orgs (global_admin) |
-| GET | /v1/organizations/:id/members | Members + pending invites |
-| POST | /v1/organizations/:id/invites | Invite user by email |
-| GET | /v1/projects | List projects |
-| POST | /v1/projects | Create project |
-| GET | /v1/projects/:id | Project details |
-| GET | /v1/projects/:id/api-keys | List key prefixes |
-| POST | /v1/projects/:id/api-keys | Generate key (returns fullKey once) |
-| DELETE | /v1/projects/:id/api-keys/:keyId | Revoke key |
-
-## Agent checklist
-
-1. Ask the user for `companyId` and ingest `endpoint` from their dashboard (or use Integration → Copy project context).
-2. Remind them to generate an API key in the dashboard — do not invent keys.
-3. Wire SDK init with placeholders replaced by real values.
-4. Verify events appear under the project Events view after a test `record` or `login`.
+- [Sitemap](https://eventiqn.trusttargets.com/sitemap.xml): XML sitemap of public pages
+- [Robots](https://eventiqn.trusttargets.com/robots.txt): Crawler directives for the marketing site

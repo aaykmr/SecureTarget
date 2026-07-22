@@ -22,4 +22,4 @@ UI is styled with **co-located `*.module.scss` files** next to their `*.tsx` fil
 2. Rebuild or refresh; any SCSS or global CSS that uses that variable updates automatically.
 3. For new components, add a `component-name.module.scss` and keep layout/spacing in tokens.
 
-Fonts are registered in `app/layout.tsx` via `next/font/google` (`--font-sans`, `--font-mono`); swap the font there if you change the typeface.
+Fonts are self-hosted under `public/fonts` (see `styles/fonts.css`). Inter Variable + IBM Plex Mono latin woff2; Inter is preloaded from `index.html`.
