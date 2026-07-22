@@ -12,6 +12,20 @@
   align-items: end;
 }
 
+.paginationBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
 .meta {
   margin: 0;
   font-size: var(--text-body-sm);
@@ -20,8 +34,30 @@
 
 .pagination {
   display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
   gap: var(--space-6);
   font-size: var(--text-body-sm);
+}
+
+.pagerButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.pageJump {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-4);
+}
+
+.pageMeta {
+  align-self: center;
+  color: var(--color-fg-muted);
+  white-space: nowrap;
 }
 
 .clickableRow {

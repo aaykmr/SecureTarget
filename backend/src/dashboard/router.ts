@@ -825,7 +825,7 @@ export async function handleDashboardApi(
   if (req.method === "GET" && parts[0] === "projects" && parts[2] === "events" && parts.length === 3) {
     if (await denyUnlessProjectTab("events")) return true;
     const query = parseQuery(req);
-    const pageSize = 50;
+    const pageSize = Math.min(100, Math.max(1, parseInt(query.get("pageSize") ?? "50", 10) || 50));
     const allowedAction = new Set(["record", "login", "conversion", "custom", "install"]);
     const actionType = query.get("actionType");
     const eventLabel = query.get("event")?.trim().slice(0, 500) ?? "";

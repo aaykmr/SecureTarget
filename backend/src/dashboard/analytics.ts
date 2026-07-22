@@ -90,10 +90,12 @@ function buildSdkEventsWhere(
     const pat = likePattern(label);
     parts.push(
       `(LOWER(COALESCE(payload_json::json->>'conversionName', '')) LIKE LOWER($${i}) ESCAPE '\\'
-        OR LOWER(COALESCE(payload_json::json->>'eventType', '')) LIKE LOWER($${i + 1}) ESCAPE '\\')`,
+        OR LOWER(COALESCE(payload_json::json->>'eventName', '')) LIKE LOWER($${i + 1}) ESCAPE '\\'
+        OR LOWER(COALESCE(payload_json::json->>'eventType', '')) LIKE LOWER($${i + 2}) ESCAPE '\\'
+        OR LOWER(COALESCE(payload_json::json->'metadata'->>'eventName', '')) LIKE LOWER($${i + 3}) ESCAPE '\\')`,
     );
-    params.push(pat, pat);
-    i += 2;
+    params.push(pat, pat, pat, pat);
+    i += 4;
   }
 
   return { clause: parts.join(" AND "), params };

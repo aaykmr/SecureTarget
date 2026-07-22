@@ -396,10 +396,11 @@ export const api = {
   listEvents(
     token: string,
     projectId: string,
-    params: { page?: number; actionType?: string; event?: string; token?: string } = {},
+    params: { page?: number; pageSize?: number; actionType?: string; event?: string; token?: string } = {},
   ) {
     const q = new URLSearchParams();
     if (params.page && params.page > 1) q.set("page", String(params.page));
+    if (params.pageSize) q.set("pageSize", String(params.pageSize));
     if (params.actionType) q.set("actionType", params.actionType);
     if (params.event) q.set("event", params.event);
     if (params.token) q.set("token", params.token);
